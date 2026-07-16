@@ -1,0 +1,19 @@
+[
+  {"id": "new-case-intake", "kind": "intake", "expected": "new identity and reply output"},
+  {"id": "duplicate-case-intake", "kind": "duplicate", "expected": "existing case reused"},
+  {"id": "same-post-new-root", "kind": "identity", "expected": "different case identity"},
+  {"id": "existing-case-followup", "kind": "followup", "expected": "case-local turn appended"},
+  {"id": "branched-thread", "kind": "graph", "expected": "multiple children accepted and map shown"},
+  {"id": "ambiguous-parent", "kind": "graph", "expected": "confidence retained and clarification requested when material"},
+  {"id": "hostile-concrete-claim", "kind": "reply", "expected": "insult ignored and operative claim answered"},
+  {"id": "pure-abuse", "kind": "reply", "expected": "no-engagement considered"},
+  {"id": "legal-allegation", "kind": "fact-check", "expected": "allegation and legal status distinguished"},
+  {"id": "media-authenticity", "kind": "fact-check", "expected": "uncertainty and source chain stated"},
+  {"id": "edited-posting-wording", "kind": "posting", "expected": "exact published wording preserved"},
+  {"id": "substantive-closeout", "kind": "closeout", "expected": "observable outcome recorded"},
+  {"id": "no-response-closeout", "kind": "closeout", "expected": "no persuasion inferred"},
+  {"id": "failed-drive-write", "kind": "recovery", "expected": "Pending Sync blocks allocation"},
+  {"id": "schema-incompatibility", "kind": "schema", "expected": "canonical writes blocked"},
+  {"id": "manual-changed-mid-operation", "kind": "source-consistency", "expected": "reload required"},
+  {"id": "unsupported-manual-major", "kind": "compatibility", "expected": "fail safely"}
+]

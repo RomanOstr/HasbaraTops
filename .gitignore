@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.codex/config.toml
+var/audit/*.jsonl
+var/audit/*.jsonl.*
+*.env
+.env*
+!.env.example

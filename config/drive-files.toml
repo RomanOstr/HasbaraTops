@@ -1,0 +1,38 @@
+[project]
+name = "Israel Facebook Dialogue Lab"
+timezone = "Asia/Jerusalem"
+repository_version = "0.1.0"
+
+[folder]
+id = "15swU8SH2E1w_eNDDPvRd4j4S8i-M0kEh"
+
+[operating_manual]
+id = "13F4MoD0oar-aamkrLgWVEC66bPPIXQSHkyA-zK3gzaA"
+minimum_supported_version = "2.7"
+supported_major_version = 2
+
+[case_log]
+id = "1BysryBcXiA0W5xN_J_kdWj0wuf8RHweSkc6w1c3Tz8k"
+schema_signature = "777cb5a318d78c4f95fdec8ac559bbfa230648ae98ad26049f26b7c337cf5c0e"
+
+[case_log.sheets]
+cases = "Cases"
+turns = "Turns"
+data_dictionary = "Data Dictionary"
+strategy_taxonomy = "Strategy Taxonomy"
+dashboard = "Dashboard"
+
+[case_log.headers]
+cases = ["Case ID", "Case Title", "Created At", "Updated At", "Status", "Topic", "Post Text", "Post URL", "Post ID", "Root Comment ID", "Source Links", "Privacy Checked", "Outcome Score 0–5", "Outcome Class", "Outcome Notes", "User Rating 1–5", "What Worked", "What Failed", "Next Test", "Closed At"]
+turns = ["Case ID", "Turn ID", "Parent Turn ID", "Parent Confidence", "Participant Ref", "Direction", "Kind", "State", "Exact Text", "Post ID", "Root Comment ID", "Reply Comment ID", "Exact URL", "URL Supplied At", "Observed At", "Notes"]
+
+[reply_strategy_guide]
+id = "1-IcaaAxzvPIDNYpO0gVpoI-bgWPOlKZz6-GhXsxJNpw"
+
+[evidence_base]
+id = "1ULMsy7XncP_bXK2TPNJQHOPLcNg2t9eV9XeHMgoPxU0"
+
+[general_responses]
+id = "1Q10V7szfmcoDLme0y3KkDAn_WdYvXVGvwQS0yI-SiGU"
+writable = false
+canonical = false

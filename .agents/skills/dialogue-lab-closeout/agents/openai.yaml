@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dialogue Lab Closeout"
+  short_description: "Close a case from observable outcomes"
+  default_prompt: "Use -lab-closeout to close this Dialogue Lab case."

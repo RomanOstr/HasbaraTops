@@ -1,6 +1,6 @@
 # Israel Facebook Dialogue Lab — Codex Runtime
 
-This repository is the non-canonical execution, validation, testing, and audit layer for the Israel Facebook Dialogue Lab. Google Drive remains the canonical source for workflow rules, case state, strategy findings, and factual material.
+This repository is the non-canonical execution, validation, and testing layer for the Israel Facebook Dialogue Lab. Google Drive remains the canonical source for workflow rules, case state, strategy findings, and factual material.
 
 ## Architecture
 
@@ -10,8 +10,7 @@ Codex app / CLI / IDE
   ├─ .agents/skills workflow instructions
   ├─ dialogue-lab deterministic CLI
   ├─ synthetic tests and evals
-  ├─ runtime-managed Google Drive connector boundary
-  └─ local hash-only technical audit log
+  └─ runtime-managed Google Drive connector boundary
                     │
                     ▼
 Google Drive — canonical source of truth
@@ -23,7 +22,7 @@ Google Drive — canonical source of truth
 
 `General responses` is user-owned, protected, and non-canonical. The repository contains only its non-secret Drive ID and a deny-by-default policy. Canonical document bodies, Case Log exports, public Facebook text, backups, and credentials must not be committed.
 
-The skills control model-driven workflows. Python controls identifiers, URL parsing, schemas, enums, lifecycle invariants, parent graphs, Pending Sync, source consistency, read-back comparison, audit hashes, and migration receipts. The Google Drive plugin is the external data boundary; it is runtime-managed and is not imported into Python.
+The skills control model-driven workflows. Python controls identifiers, URL parsing, schemas, enums, lifecycle invariants, parent graphs, Pending Sync, source consistency, read-back comparison, and migration receipts. The Google Drive plugin is the external data boundary; it is runtime-managed and is not imported into Python.
 
 ## Installation
 
@@ -108,21 +107,11 @@ Invoke `$dialogue-lab-strategy-review` only on closed cases. Require at least th
 
 ### Pending Sync recovery
 
-After a failed required write or mismatched read-back, construct a complete PENDING SYNC record in the interaction, create an audit failure entry, and do not claim that Drive changed. Reconcile or explicitly resolve it before allocating another Case ID.
+After a failed required write or mismatched read-back, construct a complete PENDING SYNC record in the interaction and do not claim that Drive changed. Reconcile or explicitly resolve it before allocating another Case ID.
 
 ### Source-consistency recovery
 
 Record source states at operation start and compare them immediately before writing. If a relevant source changed, reload it, revalidate the operation, and regenerate any affected write. If compatibility cannot be established, stop the write and report the Manual and repository versions.
-
-### Technical audit inspection
-
-The default local path is `var/audit/dialogue-lab-audit.jsonl`. It stores hashes and operational metadata, not canonical content. Validate it with:
-
-```powershell
-uv run dialogue-lab audit-verify var/audit/dialogue-lab-audit.jsonl
-```
-
-Rotate by size outside Git: close the writer, rename the current JSONL with a timestamp suffix, create a new file on the next append, and retain files under the same local access controls. Audit logs are not recovery data.
 
 ## CLI
 
@@ -141,7 +130,6 @@ dialogue-lab validate-transition <json-file>
 dialogue-lab validate-parent-graph <json-file>
 dialogue-lab pending-sync-check <json-file>
 dialogue-lab verify-readback --expected <json-file> --actual <json-file>
-dialogue-lab audit-verify <jsonl-file>
 dialogue-lab migration-receipt <json-file>
 ```
 
@@ -151,7 +139,7 @@ Commands emit JSON and use non-zero exit status for validation failures. They do
 
 `DriveProtocol` specifies semantic reads, Case Log writes, read-back, and revision-state operations. The live Google Drive plugin executes outside Python. Codex must translate a validated typed request into the narrow connector call and translate the response back into typed values. A local adapter is not presented as a live connector.
 
-The initial writer is single-process and non-transactional. Immediately before allocating an ID, re-read rows, check duplicates and Pending Sync, calculate the next ID, verify revision state, write after approval, read back, compare, and audit. An optional future Apps Script or MCP gateway may make allocation atomic; see [connector boundary](docs/drive-connector-boundary.md).
+The initial writer is single-process and non-transactional. Immediately before allocating an ID, re-read rows, check duplicates and Pending Sync, calculate the next ID, verify revision state, write after approval, read back, and compare. An optional future Apps Script or MCP gateway may make allocation atomic; see [connector boundary](docs/drive-connector-boundary.md).
 
 ## Version upgrades
 
@@ -173,5 +161,4 @@ Do not create cutover tags, named Drive versions, or offline backups during repo
 - Python does not call the runtime-managed Google Drive connector directly.
 - Every canonical write needs explicit human approval and connector read-back.
 - No code publishes to Facebook.
-- Local audit logs are non-canonical and cannot recover missing Case Log records.
 - Parallel writers remain disabled until a narrow atomic gateway exists.

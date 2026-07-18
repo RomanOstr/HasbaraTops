@@ -7,8 +7,6 @@ __pycache__/
 .coverage
 htmlcov/
 .codex/config.toml
-var/audit/*.jsonl
-var/audit/*.jsonl.*
 *.env
 .env*
 !.env.example

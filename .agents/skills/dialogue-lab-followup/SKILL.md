@@ -23,7 +23,7 @@ description: Process a new public Facebook comment, reply, reaction, screenshot,
 
 - Reads are automatic. Any Case/Turn append or update requires explicit approval and a Manual-allowed lifecycle action.
 - Before writing, re-read relevant rows, Pending Sync, source states, and schema; run source-consistency and case-local Turn ID allocation on the fresh rows.
-- After the runtime connector call, read the Case and Turn back and run `dialogue-lab verify-readback`. Record hash-only audit metadata.
+- After the runtime connector call, read the Case and Turn back and run `dialogue-lab verify-readback`.
 - On write or verification failure, show a complete PENDING SYNC record and do not claim Drive was updated. Never post to Facebook or write protected documents.
 
 ## Output

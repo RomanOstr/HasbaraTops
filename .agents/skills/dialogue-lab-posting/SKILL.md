@@ -18,7 +18,7 @@ description: Record a user's explicit confirmation that a Dialogue Lab reply was
 3. Find an approved Draft row representing the posted reply. Update that row when appropriate; otherwise prepare a new Outgoing Posted Turn. Preserve exact published wording without rewriting it.
 4. Run `dialogue-lab validate-turn`, `dialogue-lab validate-transition`, and `dialogue-lab validate-parent-graph`. Update Case timestamps and status as the Manual requires.
 5. Re-read relevant rows, unresolved Pending Sync, source revisions, and schema. Run `dialogue-lab source-consistency` before the approval-gated connector write.
-6. Read every written field back and run `dialogue-lab verify-readback`. Append hash-only technical audit metadata.
+6. Read every written field back and run `dialogue-lab verify-readback`.
 7. If writing or read-back fails, show a complete PENDING SYNC record and state that Drive was not verified.
 
 ## Safety
@@ -30,4 +30,4 @@ description: Record a user's explicit confirmation that a Dialogue Lab reply was
 
 ## Output
 
-Return a compact posting receipt containing Case ID, Turn ID, state, exact-text verification, URL/ID preservation status, Manual version and revision, source-consistency result, read-back result, and audit result.
+Return a compact posting receipt containing Case ID, Turn ID, state, exact-text verification, URL/ID preservation status, Manual version and revision, source-consistency result, and read-back result.

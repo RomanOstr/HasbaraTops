@@ -3,13 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from dialogue_lab.audit_log import append_audit_entry
 from dialogue_lab.cli import main
 from dialogue_lab.enums import CaseStatus, TurnDirection, TurnState
 from dialogue_lab.models import to_jsonable
 from dialogue_lab.schema import expected_schema_payload
 from tests.helpers import make_case, make_reply, make_turn
-from tests.test_pending_audit_receipt_cli import _audit_entry
 
 
 def _write(path: Path, value: object) -> Path:
@@ -121,10 +119,6 @@ def test_all_required_cli_commands_smoke(
         "--actual",
         str(actual_path),
     )["succeeded"] is True
-
-    audit_path = tmp_path / "audit.jsonl"
-    append_audit_entry(audit_path, _audit_entry())
-    assert _run_ok(capsys, "audit-verify", str(audit_path))["entries"] == 1
 
     receipt_path = Path(__file__).parents[1] / "docs" / "migration-receipt.json.example"
     receipt = _run_ok(capsys, "migration-receipt", str(receipt_path))

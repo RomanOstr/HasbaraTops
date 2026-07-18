@@ -18,7 +18,7 @@ description: Close an Israel Facebook Dialogue Lab case after explicit user inst
 4. Choose the Manual-allowed closed status, Outcome Class, and highest outcome score reached. Record concise Outcome Notes, What Worked, What Failed, and exactly one Next Test.
 5. Run `dialogue-lab validate-case` and `dialogue-lab validate-transition` on the planned result.
 6. Re-read relevant rows, Pending Sync, source revision state, and schema. Run source-consistency before the explicit-approval write.
-7. Read every written field back with `dialogue-lab verify-readback` and append hash-only technical audit metadata. On failure, show PENDING SYNC and do not claim closure was recorded.
+7. Read every written field back with `dialogue-lab verify-readback`. On failure, show PENDING SYNC and do not claim closure was recorded.
 
 ## Safety
 
@@ -27,4 +27,4 @@ description: Close an Israel Facebook Dialogue Lab case after explicit user inst
 
 ## Output
 
-Return a compact closeout receipt containing Case ID, final status, Outcome Score, Outcome Class, observable basis, What Worked, What Failed, Next Test, Manual revision, source-consistency result, read-back result, and audit result.
+Return a compact closeout receipt containing Case ID, final status, Outcome Score, Outcome Class, observable basis, What Worked, What Failed, Next Test, Manual revision, source-consistency result, and read-back result.

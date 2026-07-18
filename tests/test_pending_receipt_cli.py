@@ -3,37 +3,15 @@ from pathlib import Path
 
 import pytest
 
-from dialogue_lab.audit_log import append_audit_entry, value_hash, verify_audit_log
 from dialogue_lab.cli import main
 from dialogue_lab.errors import WriteSafetyError
 from dialogue_lab.migration_receipt import migration_receipt_from_mapping
-from dialogue_lab.models import TechnicalAuditEntry, to_jsonable
+from dialogue_lab.models import to_jsonable
 from dialogue_lab.pending_sync import (
     create_pending_sync,
     mark_reconciled,
     require_no_pending_sync,
 )
-
-
-def _audit_entry() -> TechnicalAuditEntry:
-    expected = {"Case ID": "CASE-20260717-001", "Exact Text": "synthetic"}
-    actual = dict(expected)
-    return TechnicalAuditEntry(
-        timestamp="2026-07-17T10:00:00+03:00",
-        operation="append_turn",
-        canonical_file_id="case-log-id",
-        sheet="Turns",
-        record_locator="CASE-20260717-001:T001",
-        case_id="CASE-20260717-001",
-        turn_id="T001",
-        expected_value_hash=value_hash(expected),
-        read_back_hash=value_hash(actual),
-        verification_result=True,
-        manual_version="2.7",
-        manual_revision_state="manual-r1",
-        schema_signature="a" * 64,
-        git_commit="deadbeef",
-    )
 
 
 def test_failed_write_creates_complete_pending_sync_and_blocks_until_reconciled() -> None:
@@ -53,17 +31,6 @@ def test_failed_write_creates_complete_pending_sync_and_blocks_until_reconciled(
     with pytest.raises(WriteSafetyError, match="unresolved"):
         require_no_pending_sync([record])
     require_no_pending_sync([mark_reconciled(record)])
-
-
-def test_audit_log_contains_hashes_not_public_text_or_participant_names(tmp_path: Path) -> None:
-    path = tmp_path / "audit.jsonl"
-    entry = _audit_entry()
-    append_audit_entry(path, entry)
-    assert verify_audit_log(path) == 1
-    text = path.read_text(encoding="utf-8")
-    assert "synthetic" not in text
-    assert "participant" not in text.lower()
-    assert "profile" not in text.lower()
 
 
 def test_migration_receipt_requires_manual_version_and_git_commit() -> None:

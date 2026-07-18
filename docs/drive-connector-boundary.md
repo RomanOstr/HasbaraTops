@@ -10,10 +10,10 @@ Approval-gated Case Log writes: `append_case`, `update_case`, `append_turn`, and
 
 Verification reads: `read_back_case` and `read_back_turn`.
 
-The runtime must validate a `DriveWriteRequest`, recheck source state, execute one narrow connector call, perform a targeted read-back, run deterministic comparison, and append hash-only audit metadata. Connector acknowledgement is not success.
+The runtime must validate a `DriveWriteRequest`, recheck source state, execute one narrow connector call, perform a targeted read-back, and run deterministic comparison. Connector acknowledgement is not success.
 
 ## Optional atomic gateway
 
 A future Apps Script or MCP gateway may expose only `findCaseByIdentity`, `allocateCase`, `appendCase`, `appendTurn`, `updateTurn`, `recordPostedReply`, `updateCaseStatus`, `closeCase`, and `readCanonicalDocument`.
 
-It must provide atomic identifier allocation, exact schema validation, source-revision checks, single-purpose methods, read-back responses, and audit-friendly errors. It must expose no generic spreadsheet writer, `General responses` access, credential output, or Facebook publishing.
+It must provide atomic identifier allocation, exact schema validation, source-revision checks, single-purpose methods, read-back responses, and actionable errors. It must expose no generic spreadsheet writer, `General responses` access, credential output, or Facebook publishing.

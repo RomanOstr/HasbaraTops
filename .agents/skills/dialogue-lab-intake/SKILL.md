@@ -26,7 +26,7 @@ description: Start or identify an Israel Facebook Dialogue Lab case from a publi
 - Immediately before a write, re-read relevant rows, unresolved Pending Sync, source revision state, and schema. Run the identifier, record, transition, graph, and source-consistency CLI checks.
 - Send only a typed Case Log append/update request through the runtime connector. Never write `General responses`, the Strategy Guide, or the Evidence Base here.
 - Read the exact row back and run `dialogue-lab verify-readback`. A connector success without a matching read-back is failure.
-- On failure, show a complete PENDING SYNC record, append hash-only technical audit metadata, and block new Case ID allocation. Never post to Facebook.
+- On failure, show a complete PENDING SYNC record and block new Case ID allocation. Never post to Facebook.
 
 ## Output
 

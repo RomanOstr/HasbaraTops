@@ -10,7 +10,7 @@ Connect the Google Drive plugin. Read all four canonical sources, verify Manual 
 
 ## Stage 3 — Controlled write test
 
-Only after explicit approval and only when the Manual permits it, perform one safe production Case Log write, read every field back, and record audit metadata. Do not create disposable test pollution. Reconcile the record only through an authorized canonical lifecycle action.
+Only after explicit approval and only when the Manual permits it, perform one safe production Case Log write and read every field back. Do not create disposable test pollution. Reconcile the record only through an authorized canonical lifecycle action.
 
 ## Stage 4 — Shadow use
 
@@ -28,7 +28,7 @@ Make Codex the only canonical writer, freeze the previous ChatGPT Project in ref
 
 ## Stage 7 — Optional private GitHub and CI
 
-Only after explicit approval, create a private remote, push validated history, require pull-request checks, and enable secret/dependency scanning. CI must exclude canonical exports, audit logs, backups, and credentials and must never write to production Drive.
+Only after explicit approval, create a private remote, push validated history, require pull-request checks, and enable secret/dependency scanning. CI must exclude canonical exports, backups, and credentials and must never write to production Drive.
 
 ## Previous runtime modes
 

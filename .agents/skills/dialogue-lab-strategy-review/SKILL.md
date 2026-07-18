@@ -24,7 +24,7 @@ description: Review strategy evidence across closed Israel Facebook Dialogue Lab
 - Case Log and source reads may run automatically.
 - Never update the Strategy Guide without a separate explicit user approval for the exact proposed wording and a fresh source-consistency check.
 - Never write the Evidence Base or `General responses`, and never post to Facebook.
-- If a separately approved later write occurs, require revision recheck, connector read-back, and hash-only technical audit metadata.
+- If a separately approved later write occurs, require revision recheck and connector read-back.
 
 ## Output
 

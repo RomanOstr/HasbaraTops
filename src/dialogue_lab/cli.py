@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .audit_log import verify_audit_log
 from .case_identity import make_case_identity
 from .enums import CaseStatus, OutcomeClass, ParentConfidence, TurnDirection, TurnKind, TurnState
 from .errors import DialogueLabError
@@ -153,7 +152,6 @@ def _doctor() -> dict[str, object]:
         "git_repository": (root / ".git").exists(),
         "drive_config": config_path.exists(),
         "agents_bootstrap": (root / "AGENTS.md").exists(),
-        "audit_directory": (root / "var" / "audit").is_dir(),
     }
     configured_signature = ""
     if config_path.exists():
@@ -211,8 +209,6 @@ def _build_parser() -> argparse.ArgumentParser:
     readback = sub.add_parser("verify-readback", help="compare expected and actual fields")
     readback.add_argument("--expected", required=True)
     readback.add_argument("--actual", required=True)
-    audit = sub.add_parser("audit-verify", help="verify technical-audit JSON Lines")
-    audit.add_argument("jsonl_file")
     receipt = sub.add_parser("migration-receipt", help="validate and render a migration receipt")
     receipt.add_argument("json_file")
     return parser
@@ -313,8 +309,6 @@ def _run(args: argparse.Namespace) -> object:
                 "read-back verification failed: " + "; ".join(verification.mismatches)
             )
         return verification
-    if command == "audit-verify":
-        return {"valid": True, "entries": verify_audit_log(Path(str(args.jsonl_file)))}
     if command == "migration-receipt":
         receipt = migration_receipt_from_mapping(_mapping(_load_json(str(args.json_file))))
         return json.loads(render_migration_receipt(receipt))

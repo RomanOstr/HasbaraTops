@@ -185,25 +185,6 @@ class SourceConsistencyResult:
 
 
 @dataclass(frozen=True)
-class TechnicalAuditEntry:
-    timestamp: str
-    operation: str
-    canonical_file_id: str
-    sheet: str
-    record_locator: str
-    case_id: str
-    turn_id: str | None
-    expected_value_hash: str
-    read_back_hash: str
-    verification_result: bool
-    manual_version: str
-    manual_revision_state: str
-    schema_signature: str
-    git_commit: str
-    error_category: str | None = None
-
-
-@dataclass(frozen=True)
 class MigrationReceipt:
     cutover_timestamp: str
     timezone: str

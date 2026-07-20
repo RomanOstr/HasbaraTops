@@ -44,8 +44,6 @@ def validate_turn(record: TurnRecord) -> None:
         raise DialogueLabError(f"malformed Turn ID: {record.turn_id}")
     if not PARTICIPANT_RE.fullmatch(record.participant_ref):
         raise DialogueLabError("Participant Ref must be USER or a case-local P-number")
-    if "facebook.com/" in record.participant_ref.lower():
-        raise DialogueLabError("profile URLs are forbidden in Participant Ref")
     if not record.exact_text:
         raise DialogueLabError("Exact Text is required")
     if not record.observed_at:

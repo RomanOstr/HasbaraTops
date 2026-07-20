@@ -6,7 +6,6 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from .errors import IdentifierError
-from .models import PendingSyncRecord
 
 CASE_ID_RE = re.compile(r"^CASE-(\d{8})-(\d{3})$")
 TURN_ID_RE = re.compile(r"^T(\d{3})$")
@@ -27,12 +26,8 @@ def next_case_id(
     existing_ids: Iterable[str],
     *,
     on_date: date | None = None,
-    pending_sync: Iterable[PendingSyncRecord] = (),
 ) -> str:
     """Allocate the next Jerusalem-date Case ID from freshly supplied rows."""
-    unresolved = [record for record in pending_sync if not record.resolved]
-    if unresolved:
-        raise IdentifierError("new Case ID allocation blocked by unresolved PENDING SYNC")
     values = list(existing_ids)
     _require_unique(values, "Case IDs")
     parsed: list[tuple[str, int]] = []

@@ -35,3 +35,9 @@ class WriteSafetyError(DialogueLabError):
     """Raised when a requested canonical write violates safety policy."""
 
     category = "write_safety_error"
+
+
+class StorageError(DialogueLabError):
+    """Raised when local canonical storage is missing, incompatible, or corrupt."""
+
+    category = "storage_error"

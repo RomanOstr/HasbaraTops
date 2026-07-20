@@ -1,24 +1,19 @@
 {
-  "case_log_modified_state": "YYYY-MM-DDTHH:MM:SSZ",
-  "case_log_schema_signature": "64-character SHA-256",
-  "codex_environment": "Codex app",
   "cutover_timestamp": "YYYY-MM-DDTHH:MM:SS+03:00",
-  "drive_connection_status": "read-only validated; approved write not yet exercised",
-  "known_limitations": [
-    "single-writer mode",
-    "no atomic Sheets allocation"
-  ],
-  "manual_revision_state": "Drive revision or modified state",
-  "manual_version": "2.7",
-  "previous_writer_disabled": false,
-  "repository_commit": "Git commit",
-  "repository_tag": "pre-codex-cutover",
-  "rollback_instructions": [
-    "Disable Codex writes",
-    "Reconcile Pending Sync",
-    "Enable exactly one writer"
-  ],
-  "test_results": "pytest, Ruff, and mypy passed",
   "timezone": "Asia/Jerusalem",
-  "writer_enabled": false
+  "database_schema_version": 1,
+  "database_integrity": "ok",
+  "database_backup": "external verified backup path",
+  "imported_case_count": 0,
+  "imported_turn_count": 0,
+  "repository_commit": "Git commit",
+  "test_results": "pytest, Ruff, and mypy passed",
+  "known_limitations": [
+    "single local writer"
+  ],
+  "rollback_instructions": [
+    "Stop canonical writes",
+    "Restore the verified SQLite backup",
+    "Run dialogue-lab doctor"
+  ]
 }

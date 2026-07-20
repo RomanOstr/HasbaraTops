@@ -1,0 +1,12 @@
+[project]
+name = "Israel Facebook Dialogue Lab"
+timezone = "Asia/Jerusalem"
+
+[database]
+schema_version = 1
+path_environment_variable = "DIALOGUE_LAB_DB"
+
+[documents]
+governance = "AGENTS.md"
+strategy_guide = "docs/reply-strategy-guide.md"
+evidence_base = "docs/evidence-base.md"

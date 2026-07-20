@@ -17,7 +17,6 @@ class CaseStatus(StringEnum):
     CLOSED_CLAIM_NARROWED = "Closed - Claim Narrowed"
     CLOSED_CORRECTION = "Closed - Correction"
     CLOSED_ABANDONED = "Closed - Abandoned"
-    PENDING_SYNC = "Pending Sync"
 
 
 class TurnDirection(StringEnum):

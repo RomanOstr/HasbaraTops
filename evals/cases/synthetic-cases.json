@@ -12,8 +12,8 @@
   {"id": "edited-posting-wording", "kind": "posting", "expected": "exact published wording preserved"},
   {"id": "substantive-closeout", "kind": "closeout", "expected": "observable outcome recorded"},
   {"id": "no-response-closeout", "kind": "closeout", "expected": "no persuasion inferred"},
-  {"id": "failed-drive-write", "kind": "recovery", "expected": "Pending Sync blocks allocation"},
-  {"id": "schema-incompatibility", "kind": "schema", "expected": "canonical writes blocked"},
-  {"id": "manual-changed-mid-operation", "kind": "source-consistency", "expected": "reload required"},
-  {"id": "unsupported-manual-major", "kind": "compatibility", "expected": "fail safely"}
+  {"id": "sqlite-write-rollback", "kind": "recovery", "expected": "transaction rolls back and integrity remains valid"},
+  {"id": "schema-version-mismatch", "kind": "schema", "expected": "canonical writes blocked"},
+  {"id": "missing-local-document", "kind": "readiness", "expected": "doctor fails safely"},
+  {"id": "unapproved-sqlite-write", "kind": "write-safety", "expected": "write rejected before database mutation"}
 ]

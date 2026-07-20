@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sqlite3
 import sys
 import tomllib
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -14,24 +17,17 @@ from typing import Any
 from . import __version__
 from .case_identity import make_case_identity
 from .enums import CaseStatus, OutcomeClass, ParentConfidence, TurnDirection, TurnKind, TurnState
-from .errors import DialogueLabError
+from .errors import DialogueLabError, StorageError, WriteSafetyError
 from .facebook_url import parse_facebook_url
 from .identifiers import next_case_id, next_turn_id
-from .lifecycle import validate_transition
-from .manual_version import require_supported_manual
+from .lifecycle import CLOSED_STATUSES, validate_posted_turn, validate_transition
 from .migration_receipt import migration_receipt_from_mapping, render_migration_receipt
-from .models import (
-    CaseRecord,
-    LifecycleTransition,
-    PendingSyncRecord,
-    TurnRecord,
-    to_jsonable,
-)
+from .models import CaseRecord, LifecycleTransition, TurnRecord, to_jsonable
 from .parent_graph import validate_parent_graph
-from .pending_sync import require_no_pending_sync
 from .readback import verify_readback
-from .schema import schema_signature, validate_schema
-from .source_consistency import check_source_consistency
+from .schema import CASE_FIELDS, SCHEMA_VERSION, TURN_FIELDS
+from .source_consistency import file_sha256
+from .storage import SQLiteStore
 from .validation import validate_case, validate_turn
 
 
@@ -57,7 +53,30 @@ def _optional_string(value: object) -> str | None:
     return None if value is None else str(value)
 
 
+def _optional_int(value: object) -> int | None:
+    return None if value is None else int(str(value))
+
+
+def _boolean(value: object, label: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.lower() in {"true", "yes"}:
+        return True
+    if isinstance(value, str) and value.lower() in {"false", "no"}:
+        return False
+    raise DialogueLabError(f"{label} must be a boolean")
+
+
+def _reject_unknown(
+    payload: Mapping[str, Any], allowed: set[str], label: str
+) -> None:
+    unknown = sorted(set(payload) - allowed)
+    if unknown:
+        raise DialogueLabError(f"unknown {label} fields: {', '.join(unknown)}")
+
+
 def _case_record(payload: Mapping[str, Any]) -> CaseRecord:
+    _reject_unknown(payload, set(CASE_FIELDS), "Case")
     links = payload.get("source_links", [])
     return CaseRecord(
         case_id=str(payload.get("case_id", "")),
@@ -71,7 +90,7 @@ def _case_record(payload: Mapping[str, Any]) -> CaseRecord:
         post_id=str(payload.get("post_id", "")),
         root_comment_id=str(payload.get("root_comment_id", "")),
         source_links=tuple(str(item) for item in _list(links, "source_links")),
-        privacy_checked=bool(payload.get("privacy_checked", False)),
+        privacy_checked=_boolean(payload.get("privacy_checked", False), "privacy_checked"),
         outcome_score=_optional_int(payload.get("outcome_score")),
         outcome_class=(
             OutcomeClass(str(payload["outcome_class"]))
@@ -87,11 +106,8 @@ def _case_record(payload: Mapping[str, Any]) -> CaseRecord:
     )
 
 
-def _optional_int(value: object) -> int | None:
-    return None if value is None else int(str(value))
-
-
 def _turn_record(payload: Mapping[str, Any]) -> TurnRecord:
+    _reject_unknown(payload, set(TURN_FIELDS), "Turn")
     return TurnRecord(
         case_id=str(payload.get("case_id", "")),
         turn_id=str(payload.get("turn_id", "")),
@@ -116,86 +132,122 @@ def _turn_record(payload: Mapping[str, Any]) -> TurnRecord:
     )
 
 
-def _pending_record(payload: Mapping[str, Any]) -> PendingSyncRecord:
-    return PendingSyncRecord(
-        operation=str(payload.get("operation", "")),
-        target_file=str(payload.get("target_file", "")),
-        target_sheet=str(payload.get("target_sheet", "")),
-        case_id=str(payload.get("case_id", "")),
-        turn_id=_optional_string(payload.get("turn_id")),
-        expected_values=_mapping(payload.get("expected_values", {}), "expected_values"),
-        failure=str(payload.get("failure", "")),
-        last_verified_state=_mapping(
-            payload.get("last_verified_state", {}), "last_verified_state"
-        ),
-        manual_version=str(payload.get("manual_version", "")),
-        source_revision_state={
-            str(key): str(value)
-            for key, value in _mapping(
-                payload.get("source_revision_state", {}), "source_revision_state"
-            ).items()
-        },
-        required_reconciliation_action=str(payload.get("required_reconciliation_action", "")),
-        created_at=str(payload.get("created_at", "")),
-        resolved=bool(payload.get("resolved", False)),
+def _print(value: object) -> None:
+    print(
+        json.dumps(
+            to_jsonable(value),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
     )
 
 
-def _print(value: object) -> None:
-    print(json.dumps(to_jsonable(value), ensure_ascii=False, indent=2, sort_keys=True))
+def _repo_root(start: Path) -> Path:
+    current = start.resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    raise StorageError("run the command from the HasbaraTops repository")
 
 
-def _doctor() -> dict[str, object]:
-    root = Path.cwd()
-    config_path = root / "config" / "drive-files.toml"
+def _outside_repository(path: Path) -> Path:
+    resolved = path.resolve()
+    root = _repo_root(Path.cwd())
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return resolved
+    raise WriteSafetyError("canonical databases, exports, and backups must stay outside Git")
+
+
+def _storage_config(root: Path) -> dict[str, Any]:
+    config_path = root / "config" / "storage.toml"
+    if not config_path.is_file():
+        raise StorageError(f"storage config does not exist: {config_path}")
+    with config_path.open("rb") as stream:
+        return tomllib.load(stream)
+
+
+def _database_path(args: argparse.Namespace) -> Path:
+    config = _storage_config(_repo_root(Path.cwd()))
+    environment_variable = str(config["database"]["path_environment_variable"])
+    configured = args.database or os.environ.get(environment_variable)
+    if not configured:
+        raise StorageError(f"set {environment_variable} or pass --database")
+    return _outside_repository(Path(str(configured)))
+
+
+def _store(args: argparse.Namespace) -> SQLiteStore:
+    return SQLiteStore(_database_path(args))
+
+
+def _doctor(args: argparse.Namespace) -> dict[str, object]:
+    root = _repo_root(Path.cwd())
+    config_path = root / "config" / "storage.toml"
+    config = _storage_config(root)
+    documents = config["documents"]
     checks: dict[str, bool] = {
-        "git_repository": (root / ".git").exists(),
-        "drive_config": config_path.exists(),
-        "agents_bootstrap": (root / "AGENTS.md").exists(),
+        "storage_config": config_path.is_file(),
+        "agents": (root / str(documents["governance"])).is_file(),
+        "strategy_guide": (root / str(documents["strategy_guide"])).is_file(),
+        "evidence_base": (root / str(documents["evidence_base"])).is_file(),
     }
-    configured_signature = ""
-    if config_path.exists():
-        with config_path.open("rb") as stream:
-            config = tomllib.load(stream)
-        configured_signature = str(config["case_log"]["schema_signature"])
-        checks["schema_signature"] = configured_signature == schema_signature().value
+    configured_version = int(config["database"]["schema_version"])
+    checks["configured_schema_version"] = configured_version == SCHEMA_VERSION
+    document_revisions = {
+        name: file_sha256(root / str(path))
+        for name, path in documents.items()
+        if (root / str(path)).is_file()
+    }
+    status = _store(args).status()
+    checks["database_integrity"] = status["integrity"] == "ok"
     return {
         "ok": all(checks.values()),
         "checks": checks,
-        "repository_schema_signature": schema_signature().value,
-        "configured_schema_signature": configured_signature,
-        "drive_connection": "runtime-managed; not exercised by the Python doctor",
-        "writer_policy": "single writer; explicit approval; read-back required",
+        "database": status,
+        "document_revisions": document_revisions,
+        "configured_schema_version": configured_version,
+        "writer_policy": "transactional; explicit approval; committed read-back",
     }
+
+
+def _add_database_write_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--approved", action="store_true")
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dialogue-lab",
-        description="Deterministic validation for the Israel Facebook Dialogue Lab",
+        description="Deterministic local operations for the Israel Facebook Dialogue Lab",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("--database", help="SQLite path; defaults to DIALOGUE_LAB_DB")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("doctor", help="check local repository/configuration readiness")
+    sub.add_parser("doctor", help="verify local docs, configuration, and database integrity")
+    init = sub.add_parser("db-init", help="initialize or verify the canonical SQLite database")
+    _add_database_write_arguments(init)
+    sub.add_parser("db-status", help="report schema, integrity, and row counts")
+    backup = sub.add_parser("db-backup", help="create a consistent non-overwriting backup")
+    backup.add_argument("--destination", required=True)
+    _add_database_write_arguments(backup)
+    import_parser = sub.add_parser("db-import", help="atomically import cases and turns JSON")
+    import_parser.add_argument("json_file")
+    _add_database_write_arguments(import_parser)
+
     parse = sub.add_parser("parse-url", help="parse a Facebook URL without rewriting it")
     parse.add_argument("url")
-    manual = sub.add_parser("manual-version", help="parse and validate Manual text or a file")
-    manual.add_argument("text_or_file")
-    schema = sub.add_parser("schema-check", help="validate an observed schema JSON file")
-    schema.add_argument("schema_json")
-    consistency = sub.add_parser("source-consistency", help="compare source revision states")
-    consistency.add_argument("json_file")
     case_key = sub.add_parser("case-key", help="generate normalized canonical case identity")
     case_key.add_argument("--post-id", required=True)
     case_key.add_argument("--root-comment-id", required=True)
-    case_id = sub.add_parser("next-case-id", help="allocate a date-local Case ID")
+    case_id = sub.add_parser("next-case-id", help="calculate a date-local Case ID")
     case_id.add_argument("--date", required=True)
     case_id.add_argument("--existing", required=True)
-    case_id.add_argument("--pending-sync")
-    turn_id = sub.add_parser("next-turn-id", help="allocate a case-local Turn ID")
+    turn_id = sub.add_parser("next-turn-id", help="calculate a case-local Turn ID")
     turn_id.add_argument("--case-id", required=True)
     turn_id.add_argument("--existing", required=True)
+
     validate_case_parser = sub.add_parser("validate-case", help="validate a Case record")
     validate_case_parser.add_argument("json_file")
     validate_turn_parser = sub.add_parser("validate-turn", help="validate a Turn record")
@@ -204,13 +256,36 @@ def _build_parser() -> argparse.ArgumentParser:
     transition.add_argument("json_file")
     graph = sub.add_parser("validate-parent-graph", help="validate a case-local parent graph")
     graph.add_argument("json_file")
-    pending = sub.add_parser("pending-sync-check", help="fail while PENDING SYNC is unresolved")
-    pending.add_argument("json_file")
     readback = sub.add_parser("verify-readback", help="compare expected and actual fields")
     readback.add_argument("--expected", required=True)
     readback.add_argument("--actual", required=True)
     receipt = sub.add_parser("migration-receipt", help="validate and render a migration receipt")
     receipt.add_argument("json_file")
+
+    find = sub.add_parser("case-find", help="resolve one Case by canonical identity")
+    find.add_argument("--post-id", required=True)
+    find.add_argument("--root-comment-id", required=True)
+    show = sub.add_parser("case-show", help="return one Case and its complete Turn graph")
+    show.add_argument("--case-id", required=True)
+    sub.add_parser("case-list-open", help="return exact open-case permalink summaries")
+    sub.add_parser("strategy-dataset", help="return all closed Cases and their Turns")
+
+    intake = sub.add_parser("case-intake", help="create one Case and initial Turns atomically")
+    intake.add_argument("json_file")
+    intake.add_argument("--date", required=True)
+    _add_database_write_arguments(intake)
+    followup = sub.add_parser("case-followup", help="record one incoming Turn atomically")
+    followup.add_argument("--case-id", required=True)
+    followup.add_argument("json_file")
+    _add_database_write_arguments(followup)
+    posting = sub.add_parser("case-record-posting", help="record a confirmed posted reply")
+    posting.add_argument("--case-id", required=True)
+    posting.add_argument("json_file")
+    _add_database_write_arguments(posting)
+    close = sub.add_parser("case-close", help="close one Case atomically")
+    close.add_argument("--case-id", required=True)
+    close.add_argument("json_file")
+    _add_database_write_arguments(close)
     return parser
 
 
@@ -227,52 +302,195 @@ def _ids_from_json(value: object, key: str, case_id: str | None = None) -> list[
     return output
 
 
+def _turn_for_case(
+    payload: Mapping[str, Any], case: CaseRecord, turn_id: str
+) -> TurnRecord:
+    values = dict(payload)
+    values.pop("draft_turn_id", None)
+    values.update(
+        {
+            "case_id": case.case_id,
+            "turn_id": turn_id,
+            "post_id": case.post_id,
+            "root_comment_id": case.root_comment_id,
+        }
+    )
+    return _turn_record(values)
+
+
+def _run_database_command(args: argparse.Namespace, command: str) -> object:
+    store = _store(args)
+    if command == "db-init":
+        return store.initialize(approved=bool(args.approved))
+    if command == "db-status":
+        return store.status()
+    if command == "db-backup":
+        destination = _outside_repository(Path(str(args.destination)))
+        return store.backup(destination, approved=bool(args.approved))
+    if command == "db-import":
+        payload = _mapping(_load_json(str(args.json_file)), "database import")
+        _reject_unknown(payload, {"cases", "turns"}, "database import")
+        cases = [
+            _case_record(_mapping(item, "Case import row"))
+            for item in _list(payload.get("cases"))
+        ]
+        turns = [
+            _turn_record(_mapping(item, "Turn import row"))
+            for item in _list(payload.get("turns"))
+        ]
+        return store.import_records(cases, turns, approved=bool(args.approved))
+    if command == "case-find":
+        case = store.find_case(str(args.post_id), str(args.root_comment_id))
+        result: dict[str, object] = {"found": False}
+        if case is not None:
+            result = {"found": True, "case_id": case.case_id, "status": case.status.value}
+        return result
+    if command == "case-show":
+        case_id = str(args.case_id)
+        return {"case": store.get_case(case_id), "turns": store.get_turns(case_id)}
+    if command == "case-list-open":
+        return store.list_open_summaries()
+    if command == "strategy-dataset":
+        return store.strategy_dataset()
+    if command == "case-intake":
+        payload = _mapping(_load_json(str(args.json_file)), "case intake")
+        _reject_unknown(payload, {"case", "turns"}, "case intake")
+        case_payload = _mapping(payload.get("case"), "case")
+        existing = store.find_case(
+            str(case_payload.get("post_id", "")), str(case_payload.get("root_comment_id", ""))
+        )
+        if existing is not None:
+            return {
+                "created": False,
+                "duplicate": True,
+                "case_id": existing.case_id,
+                "status": existing.status.value,
+            }
+        case_id = next_case_id(store.case_ids(), on_date=date.fromisoformat(str(args.date)))
+        case = _case_record({**case_payload, "case_id": case_id})
+        initial_turns: list[TurnRecord] = []
+        for item in _list(payload.get("turns", []), "turns"):
+            turn_id = next_turn_id(turn.turn_id for turn in initial_turns)
+            initial_turns.append(
+                _turn_for_case(_mapping(item, "initial Turn"), case, turn_id)
+            )
+        return store.create_case(case, initial_turns, approved=bool(args.approved))
+    if command in {"case-followup", "case-record-posting"}:
+        case_id = str(args.case_id)
+        case = store.get_case(case_id)
+        if case.status in CLOSED_STATUSES:
+            raise DialogueLabError(f"case is closed: {case_id}")
+        payload = _mapping(_load_json(str(args.json_file)), "Turn payload")
+        _reject_unknown(payload, {*TURN_FIELDS, "draft_turn_id"}, "Turn")
+        turn_id = next_turn_id(store.turn_ids(case_id))
+        turn = _turn_for_case(payload, case, turn_id)
+        if command == "case-followup":
+            if turn.direction is not TurnDirection.INCOMING:
+                raise DialogueLabError("case-followup requires an Incoming Turn")
+            target_status = CaseStatus.ACTIVE_EXCHANGE
+            reason = "incoming public turn"
+            replace_draft_id = None
+        else:
+            validate_posted_turn(turn)
+            target_status = CaseStatus.POSTED if case.status is CaseStatus.DRAFT else case.status
+            reason = "posting confirmed"
+            replace_draft_id = _optional_string(payload.get("draft_turn_id"))
+        return store.add_turn(
+            turn,
+            target_status=target_status,
+            updated_at=turn.observed_at,
+            reason=reason,
+            replace_draft_id=replace_draft_id,
+            approved=bool(args.approved),
+        )
+    if command == "case-close":
+        case = store.get_case(str(args.case_id))
+        payload = _mapping(_load_json(str(args.json_file)), "case close")
+        close_fields = {
+            "status",
+            "updated_at",
+            "outcome_score",
+            "outcome_class",
+            "outcome_notes",
+            "user_rating",
+            "what_worked",
+            "what_failed",
+            "next_test",
+            "closed_at",
+            "reason",
+        }
+        _reject_unknown(payload, close_fields, "case close")
+        status = CaseStatus(str(payload.get("status", "")))
+        if status not in CLOSED_STATUSES:
+            raise DialogueLabError("case-close requires a Closed status")
+        required_text = (
+            "updated_at",
+            "outcome_notes",
+            "what_worked",
+            "what_failed",
+            "next_test",
+            "closed_at",
+        )
+        missing = [name for name in required_text if not str(payload.get(name, "")).strip()]
+        if missing or payload.get("outcome_score") is None or payload.get("outcome_class") is None:
+            raise DialogueLabError("case-close payload lacks required outcome fields")
+        updated = replace(
+            case,
+            updated_at=str(payload["updated_at"]),
+            status=status,
+            outcome_score=int(str(payload["outcome_score"])),
+            outcome_class=OutcomeClass(str(payload["outcome_class"])),
+            outcome_notes=str(payload["outcome_notes"]),
+            user_rating=_optional_int(payload.get("user_rating")),
+            what_worked=str(payload["what_worked"]),
+            what_failed=str(payload["what_failed"]),
+            next_test=str(payload["next_test"]),
+            closed_at=str(payload["closed_at"]),
+        )
+        return store.close_case(
+            updated,
+            reason=str(payload.get("reason", "explicit closeout")),
+            approved=bool(args.approved),
+        )
+    raise DialogueLabError(f"unknown database command: {command}")
+
+
 def _run(args: argparse.Namespace) -> object:
     command = str(args.command)
     if command == "doctor":
-        result = _doctor()
+        result = _doctor(args)
         if not result["ok"]:
             raise DialogueLabError("local doctor checks failed")
         return result
+    database_commands = {
+        "db-init",
+        "db-status",
+        "db-backup",
+        "db-import",
+        "case-find",
+        "case-show",
+        "case-list-open",
+        "strategy-dataset",
+        "case-intake",
+        "case-followup",
+        "case-record-posting",
+        "case-close",
+    }
+    if command in database_commands:
+        return _run_database_command(args, command)
     if command == "parse-url":
         return parse_facebook_url(str(args.url))
-    if command == "manual-version":
-        source = Path(str(args.text_or_file))
-        text = source.read_text(encoding="utf-8") if source.is_file() else str(args.text_or_file)
-        version, warnings = require_supported_manual(text)
-        return {"version": str(version), "warnings": warnings}
-    if command == "schema-check":
-        signature = validate_schema(_mapping(_load_json(str(args.schema_json))))
-        return {"compatible": True, "schema_signature": signature.value}
-    if command == "source-consistency":
-        payload = _mapping(_load_json(str(args.json_file)))
-        start = {str(k): str(v) for k, v in _mapping(payload.get("operation_start", {})).items()}
-        current = {str(k): str(v) for k, v in _mapping(payload.get("current", {})).items()}
-        material_value = payload.get("material_sources")
-        material = (
-            [str(item) for item in _list(material_value, "material_sources")]
-            if material_value is not None
-            else None
-        )
-        return check_source_consistency(start, current, material_sources=material)
     if command == "case-key":
         return {"case_key": make_case_identity(args.post_id, args.root_comment_id).key}
     if command == "next-case-id":
         existing = _ids_from_json(_load_json(str(args.existing)), "case_id")
-        pending_records: list[PendingSyncRecord] = []
-        if args.pending_sync:
-            pending_records = [
-                _pending_record(_mapping(item))
-                for item in _list(_load_json(str(args.pending_sync)))
-            ]
-        allocated = next_case_id(
-            existing,
-            on_date=date.fromisoformat(str(args.date)),
-            pending_sync=pending_records,
-        )
-        return {"case_id": allocated}
+        return {
+            "case_id": next_case_id(existing, on_date=date.fromisoformat(str(args.date)))
+        }
     if command == "next-turn-id":
-        existing = _ids_from_json(_load_json(str(args.existing)), "turn_id", str(args.case_id))
+        existing = _ids_from_json(
+            _load_json(str(args.existing)), "turn_id", str(args.case_id)
+        )
         return {"case_id": args.case_id, "turn_id": next_turn_id(existing)}
     if command == "validate-case":
         validate_case(_case_record(_mapping(_load_json(str(args.json_file)))))
@@ -294,12 +512,6 @@ def _run(args: argparse.Namespace) -> object:
         turns = [_turn_record(_mapping(item)) for item in _list(_load_json(str(args.json_file)))]
         validate_parent_graph(turns)
         return {"valid": True, "turn_count": len(turns)}
-    if command == "pending-sync-check":
-        records = [
-            _pending_record(_mapping(item)) for item in _list(_load_json(str(args.json_file)))
-        ]
-        require_no_pending_sync(records)
-        return {"clear": True}
     if command == "verify-readback":
         expected = _mapping(_load_json(str(args.expected)))
         actual = _mapping(_load_json(str(args.actual)))
@@ -321,9 +533,20 @@ def main(argv: list[str] | None = None) -> int:
     try:
         _print(_run(args))
         return 0
-    except (DialogueLabError, OSError, ValueError, KeyError) as error:
-        category = getattr(error, "category", "input_error")
-        print(json.dumps({"ok": False, "error": str(error), "category": category}), file=sys.stderr)
+    except (DialogueLabError, OSError, ValueError, KeyError, sqlite3.Error) as error:
+        category = (
+            "storage_error"
+            if isinstance(error, sqlite3.Error)
+            else getattr(error, "category", "input_error")
+        )
+        print(
+            json.dumps(
+                {"ok": False, "error": str(error), "category": category},
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
+            file=sys.stderr,
+        )
         return 2
 
 

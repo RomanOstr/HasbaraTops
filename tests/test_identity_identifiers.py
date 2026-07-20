@@ -5,7 +5,6 @@ import pytest
 from dialogue_lab.case_identity import find_duplicate_case, make_case_identity
 from dialogue_lab.errors import DialogueLabError, IdentifierError
 from dialogue_lab.identifiers import next_case_id, next_turn_id
-from dialogue_lab.models import PendingSyncRecord
 from tests.helpers import make_case
 
 
@@ -48,25 +47,6 @@ def test_malformed_and_duplicate_case_ids_are_rejected() -> None:
         next_case_id(
             ["CASE-20260717-001", "CASE-20260717-001"], on_date=date(2026, 7, 17)
         )
-
-
-def test_unresolved_pending_sync_blocks_case_allocation() -> None:
-    record = PendingSyncRecord(
-        operation="append_case",
-        target_file="case-log",
-        target_sheet="Cases",
-        case_id="CASE-20260717-001",
-        turn_id=None,
-        expected_values={"Case ID": "CASE-20260717-001"},
-        failure="connector unavailable",
-        last_verified_state={},
-        manual_version="2.7",
-        source_revision_state={"manual": "r1"},
-        required_reconciliation_action="retry append and read back",
-        created_at="2026-07-17T10:00:00+03:00",
-    )
-    with pytest.raises(IdentifierError, match="PENDING SYNC"):
-        next_case_id([], on_date=date(2026, 7, 17), pending_sync=[record])
 
 
 def test_turn_ids_are_case_local_and_sequential() -> None:

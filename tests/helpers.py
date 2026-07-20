@@ -19,7 +19,7 @@ def make_case(**overrides: object) -> CaseRecord:
         "status": CaseStatus.POSTED,
         "topic": "Synthetic topic",
         "post_text": "Synthetic public post text.",
-        "post_url": "https://www.facebook.com/example/posts/123",
+        "post_url": "https://www.facebook.com/example/posts/123?comment_id=456",
         "post_id": "123",
         "root_comment_id": "456",
         "privacy_checked": True,

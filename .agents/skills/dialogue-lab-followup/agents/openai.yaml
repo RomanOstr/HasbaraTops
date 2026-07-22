@@ -1,4 +1,4 @@
 interface:
   display_name: "Dialogue Lab Follow-up"
   short_description: "Process a new turn in an existing case"
-  default_prompt: "Use -lab-followup to process this new public turn."
+  default_prompt: "Use $dialogue-lab-followup to process this new public turn."

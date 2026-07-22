@@ -1,6 +1,6 @@
 ---
 name: dialogue-lab-posting
-description: Record a user's explicit confirmation that a Dialogue Lab reply was posted to Facebook. Use when the user says a reply was posted and supplies or confirms the exact published wording, permalink, identifiers, or posting time. This skill records state; it never publishes to Facebook.
+description: Record a user's explicit confirmation that a Dialogue Lab reply was posted, using one deterministic SQLite transaction; this skill never publishes to Facebook.
 ---
 
 # Dialogue Lab Posting Confirmation
@@ -9,25 +9,21 @@ description: Record a user's explicit confirmation that a Dialogue Lab reply was
 
 - Target Case ID and parent Turn ID.
 - Exact wording actually published, even when it differs from the recommendation.
-- Supplied permalink, IDs, and posting time when available.
+- Supplied permalink, identifiers, posting time, and optional Draft Turn ID.
 
 ## Workflow
 
-1. Read the complete live Manual, verify compatibility, and record its revision state. Read and validate the live Case Log schema.
-2. Resolve the case and parent turn. Parse any supplied URL with `dialogue-lab parse-url`; preserve it exactly and do not derive the immediate parent solely from `reply_comment_id`.
-3. Find an approved Draft row representing the posted reply. Update that row when appropriate; otherwise prepare a new Outgoing Posted Turn. Preserve exact published wording without rewriting it.
-4. Run `dialogue-lab validate-turn`, `dialogue-lab validate-transition`, and `dialogue-lab validate-parent-graph`. Update Case timestamps and status as the Manual requires.
-5. Re-read relevant rows, unresolved Pending Sync, source revisions, and schema. Run `dialogue-lab source-consistency` before the approval-gated connector write.
-6. Read every written field back and run `dialogue-lab verify-readback`.
-7. If writing or read-back fails, show a complete PENDING SYNC record and state that Drive was not verified.
+1. Load the Case once with `case-show`.
+2. Parse any supplied URL with `parse-url`; preserve it exactly. Use supplied `reply_comment_id` as the strongest duplicate identity, but resolve the immediate parent only from visible context or user confirmation.
+3. Prepare one Outgoing Posted Turn payload containing the exact published wording. Include `draft_turn_id` only when an existing Outgoing Draft must be marked Replaced.
+4. After explicit approval, run `dialogue-lab check`; if it passes, run exactly one `dialogue-lab case-record-posting --case-id <id> <payload> --approved` transaction. Without `reply_comment_id`, it deduplicates by Case ID + Parent Turn ID (including a null root) + Direction + Exact Text. It otherwise allocates the Turn ID, validates the graph and lifecycle, writes atomically, and reads back the committed state.
 
 ## Safety
 
 - Never publish, edit, or delete Facebook content.
 - Never assume the posted text equals an earlier draft.
-- Never write `General responses`, the Strategy Guide, or the Evidence Base.
-- Never treat connector acknowledgement as successful posting confirmation without matching Case Log read-back.
+- Never access or write `General responses`.
 
 ## Output
 
-Return a compact posting receipt containing Case ID, Turn ID, state, exact-text verification, URL/ID preservation status, Manual version and revision, source-consistency result, and read-back result.
+Return only the compact command receipt plus exact-text and permalink preservation status.

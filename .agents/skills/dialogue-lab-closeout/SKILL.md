@@ -1,30 +1,28 @@
 ---
 name: dialogue-lab-closeout
-description: Close an Israel Facebook Dialogue Lab case after explicit user instruction, reported abandonment, no-response closure, or a clearly ended exchange. Use to validate closure, classify only observable outcomes, score the highest outcome, and record one controlled next test.
+description: Close an Israel Facebook Dialogue Lab case from observable evidence and record the result through one approval-gated SQLite transaction.
 ---
 
 # Dialogue Lab Closeout
 
 ## Required inputs
 
-- Target Case ID and the allowed closure condition.
+- Target Case ID and allowed closure condition.
 - Any final public turn, reaction, or user report needed to establish the observable ending.
 
 ## Workflow
 
-1. Read the complete live Manual, verify compatibility, record its revision, and validate the live Case Log schema.
-2. Load the complete Case and Turn graph. Run `dialogue-lab validate-parent-graph`; resolve any required missing public turn before closure.
-3. Verify privacy. Record observable chronology only. Never infer persuasion from silence, deletion, blocking, a reaction, or disappearance.
-4. Choose the Manual-allowed closed status, Outcome Class, and highest outcome score reached. Record concise Outcome Notes, What Worked, What Failed, and exactly one Next Test.
-5. Run `dialogue-lab validate-case` and `dialogue-lab validate-transition` on the planned result.
-6. Re-read relevant rows, Pending Sync, source revision state, and schema. Run source-consistency before the explicit-approval write.
-7. Read every written field back with `dialogue-lab verify-readback`. On failure, show PENDING SYNC and do not claim closure was recorded.
+1. Load the complete Case and Turn graph once with `case-show`.
+2. Resolve any missing public Turn through `$dialogue-lab-followup` before closure.
+3. Verify privacy and record observable chronology only. Never infer persuasion from silence, deletion, blocking, a reaction, or disappearance.
+4. Choose the closed status, Outcome Class, highest outcome score reached, concise Outcome Notes, What Worked, What Failed, and exactly one Next Test.
+5. Prepare one closeout payload. After explicit approval, run `dialogue-lab check`; if it passes, run exactly one `dialogue-lab case-close --case-id <id> <payload> --approved` transaction and report its compact receipt.
 
 ## Safety
 
-- Do not close a case solely because no new message is visible unless the user requests or reports no-response closure.
-- Do not alter canonical documents other than approved Case Log fields. Never post to Facebook.
+- Do not close solely because no new message is visible unless the user requests or reports no-response closure.
+- Never access or write `General responses`, and never post to Facebook.
 
 ## Output
 
-Return a compact closeout receipt containing Case ID, final status, Outcome Score, Outcome Class, observable basis, What Worked, What Failed, Next Test, Manual revision, source-consistency result, and read-back result.
+Return Case ID, final status, Outcome Score, Outcome Class, observable basis, What Worked, What Failed, Next Test, and read-back status.

@@ -1,33 +1,27 @@
 ---
 name: dialogue-lab-followup
-description: Process a new public Facebook comment, reply, reaction, screenshot, text, or permalink in an existing Israel Facebook Dialogue Lab case. Use to extend the turn graph, resolve parentage with explicit confidence, update Active Exchange state, and recommend the next reply.
+description: Process supplied public content in an existing Israel Facebook Dialogue Lab case, resolve parentage, and prepare one approval-gated SQLite follow-up transaction.
 ---
 
 # Dialogue Lab Follow-up
 
 ## Required inputs
 
-- Existing Case ID or enough Post ID + Root Comment ID data to resolve it.
-- Exact new public turn or reaction, supplied URL, observed time, and any visible parent context.
+- Existing Case ID or enough Post ID + Root Comment ID and branch context to select one candidate.
+- Exact new public turn or reaction, supplied URL, observed time, and visible parent context.
 
 ## Workflow
 
-1. Read the complete live Manual and record its compatible version and revision state. Read the live Case Log schema and run `dialogue-lab schema-check`.
-2. Parse supplied URLs with `dialogue-lab parse-url`, preserve each exact URL, resolve canonical identity, and load the existing Case plus every relevant Turn.
-3. Assign or reuse only `P1`, `P2`, … or `USER`. Identify the direct parent from visible context or user confirmation; record Parent Confidence. Ask only when ambiguity materially changes the reply.
-4. Build the candidate incoming Turn, then run `dialogue-lab validate-turn` and `dialogue-lab validate-parent-graph`. Multiple children may share a parent. Show a compact Thread Map when the graph is branched.
-5. Load the live Strategy Guide and Evidence Base as needed, verify material claims, and answer the operative claim without treating private planning as public context.
-6. Produce the standard reply output. Ignore incidental abuse; use `no_engagement` for credible threats, doxxing, calls for violence, spam, or no testable claim.
-
-## Canonical write gate
-
-- Reads are automatic. Any Case/Turn append or update requires explicit approval and a Manual-allowed lifecycle action.
-- Before writing, re-read relevant rows, Pending Sync, source states, and schema; run source-consistency and case-local Turn ID allocation on the fresh rows.
-- After the runtime connector call, read the Case and Turn back and run `dialogue-lab verify-readback`.
-- On write or verification failure, show a complete PENDING SYNC record and do not claim Drive was updated. Never post to Facebook or write protected documents.
+1. Treat an explicit Case ID as definitive; otherwise use root-based `case-find` only for candidate discovery and select the Case from branch context, asking when multiple candidates remain materially ambiguous. Load the selected Case once with `case-show`.
+2. Parse supplied URLs with `parse-url`, preserve each exact URL, and confirm that the selected Case contains the tracked branch. Never identify a Case from its latest reply.
+3. When sibling branches already stored in one Case must be tracked independently, prepare one `case-split-branch` command with an outside-Git backup and exact new title/topic. After explicit approval, run `dialogue-lab check`; if it passes, run the split and use its committed Case/Turn mapping.
+4. Assign or reuse only `P1`, `P2`, ... or `USER`. Resolve the direct parent from visible context or user confirmation and retain Parent Confidence; ask only when ambiguity changes the reply.
+5. Build one incoming Turn payload. A supplied `reply_comment_id` is its strongest duplicate identity; without one, the transaction uses Case ID + Parent Turn ID (including a null root) + Direction + Exact Text. The transaction returns the existing Turn on a duplicate or allocates a Turn ID, validates the complete parent graph, appends, commits, and reads back.
+6. Read repository strategy and evidence Markdown only as needed, verify material claims, and answer the operative claim without treating private planning as public context.
+7. Return the standard output. After explicit approval, run `dialogue-lab check`; if it passes, run exactly one `dialogue-lab case-followup --case-id <id> <payload> --approved` transaction and report its compact receipt.
 
 ## Output
 
 Return, in order: `Case ID / Status`, optional `Thread Map`, `Claim Map`, `Recommended Reply`, `Shorter Version`, `Why This Approach`, `Fact Check`, `Conversational Potential`, `Log Tags`, and `Next Action`.
 
-Use the Manual's exact Next Action line and the Facebook thread's language.
+Use the Facebook thread's language. Ignore incidental abuse; use `no_engagement` for credible threats, doxxing, calls for violence, spam, or no testable claim.

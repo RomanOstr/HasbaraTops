@@ -10,14 +10,16 @@
 
 ## HasbaraTops
 
-- Before case work, read the live Operating Manual through the configured Drive ID, verify that its version is supported, and record the revision state used.
-- Treat Google Drive as canonical and repository files as non-canonical implementation; never use or commit repository exports as substitutes for live canonical sources.
-- Use `config/drive-files.toml`, preserve the live Case Log schema, and check `Post ID + Root Comment ID` for duplicates before allocating a Case ID.
+- [HASBARA-CHECK-01] Run `dialogue-lab check` before a canonical write, after a failed write or readiness check, or when database state is uncertain; ordinary read-only queries must reuse fresh sufficient evidence.
+- [HASBARA-CANONICAL-01] Treat repository Markdown as canonical governance, strategy, and evidence content and the configured SQLite database as canonical Case and Turn state; do not use MCP for Dialogue Lab work.
+- [HASBARA-IDENTITY-01] Use `config/storage.toml`; preserve the SQLite schema version; treat Case ID as definitive, allow multiple Cases per `Post ID + Root Comment ID`, and treat root lookup as candidate discovery only.
+- [HASBARA-IDENTITY-02] Deduplicate Turns by supplied `reply_comment_id`; when absent, use Case ID + Parent Turn ID (including null roots) + Direction + Exact Text; never use mutable latest-reply state as identity.
+- [HASBARA-OPEN-CASES-01] When presenting open Cases, use each Case's latest public Turn supplied exact URL; never substitute the Case root URL, and mark a missing link explicitly.
 - Invoke the matching Dialogue Lab skill for intake, follow-up, posting confirmation, closeout, or strategy review.
 - Never edit, move, rename, replace, delete, import, or summarize `General responses` without the user's explicit instruction for that exact action.
-- Before a canonical write, verify that relevant source state has not materially changed; require explicit approval, read the record back, and compare every expected field.
-- After a failed required write, follow the Manual's Recovery procedure and block new Case ID allocation while any `PENDING SYNC` is unresolved.
-- Never open, inspect, click, scroll, or otherwise interact with Facebook unless the user explicitly asks. Never post to Facebook autonomously. Never store credentials, OAuth material, secrets, or canonical document bodies in Git.
+- Perform canonical writes only through explicit-approval `dialogue-lab` commands that use SQLite transactions and committed read-back verification.
+- After a failed canonical write, verify rollback and database integrity; block further writes while either remains unresolved.
+- Never open, inspect, click, scroll, or otherwise interact with Facebook unless the user explicitly asks. Never post to Facebook autonomously. Never commit SQLite databases, exports, backups, credentials, or secrets.
 
 ### Repo checkout and worktrees:
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Dialogue Lab Posting"
   short_description: "Record an explicitly confirmed posted reply"
-  default_prompt: "Use -lab-posting to record my exact published reply."
+  default_prompt: "Use $dialogue-lab-posting to record my exact published reply."

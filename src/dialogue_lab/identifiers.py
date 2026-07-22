@@ -1,14 +1,13 @@
-"""Case-local and date-local identifier allocation."""
+"""Global Case and case-local Turn identifier allocation."""
 
 import re
 from collections.abc import Iterable
-from datetime import date, datetime
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from .errors import IdentifierError
-from .models import PendingSyncRecord
 
-CASE_ID_RE = re.compile(r"^CASE-(\d{8})-(\d{3})$")
+CASE_ID_RE = re.compile(r"^Case-(\d{3,})$")
 TURN_ID_RE = re.compile(r"^T(\d{3})$")
 JERUSALEM = ZoneInfo("Asia/Jerusalem")
 
@@ -23,29 +22,28 @@ def _require_unique(values: list[str], label: str) -> None:
         raise IdentifierError(f"duplicate {label}: {', '.join(duplicates)}")
 
 
+def case_id_number(value: str) -> int:
+    """Validate a canonical Case ID and return its positive sequence number."""
+    match = CASE_ID_RE.fullmatch(value)
+    if match is None:
+        raise IdentifierError(f"malformed Case ID: {value}")
+    number = int(match.group(1))
+    if number < 1 or value != f"Case-{number:03d}":
+        raise IdentifierError(f"malformed Case ID: {value}")
+    return number
+
+
 def next_case_id(
     existing_ids: Iterable[str],
-    *,
-    on_date: date | None = None,
-    pending_sync: Iterable[PendingSyncRecord] = (),
 ) -> str:
-    """Allocate the next Jerusalem-date Case ID from freshly supplied rows."""
-    unresolved = [record for record in pending_sync if not record.resolved]
-    if unresolved:
-        raise IdentifierError("new Case ID allocation blocked by unresolved PENDING SYNC")
+    """Allocate the next globally sequential Case ID from freshly supplied rows."""
     values = list(existing_ids)
     _require_unique(values, "Case IDs")
-    parsed: list[tuple[str, int]] = []
+    numbers: list[int] = []
     for value in values:
-        match = CASE_ID_RE.fullmatch(value)
-        if match is None:
-            raise IdentifierError(f"malformed Case ID: {value}")
-        parsed.append((match.group(1), int(match.group(2))))
-    target = (on_date or now_jerusalem().date()).strftime("%Y%m%d")
-    sequence = max((number for day, number in parsed if day == target), default=0) + 1
-    if sequence > 999:
-        raise IdentifierError(f"Case ID sequence exhausted for {target}")
-    return f"CASE-{target}-{sequence:03d}"
+        numbers.append(case_id_number(value))
+    sequence = max(numbers, default=0) + 1
+    return f"Case-{sequence:03d}"
 
 
 def next_turn_id(existing_ids: Iterable[str]) -> str:

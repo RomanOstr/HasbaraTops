@@ -1,17 +1,7 @@
-# Safe example only; this file does not establish a live connection.
+# Safe local example. The canonical database path is supplied through the
+# DIALOGUE_LAB_DB environment variable and must resolve outside the Git repo.
 [dialogue_lab]
-drive_config = "config/drive-files.toml"
-connector = "google-drive-plugin"
-reads = "automatic"
+storage_config = "config/storage.toml"
+database_environment_variable = "DIALOGUE_LAB_DB"
 writes = "explicit-approval"
-delete = false
-move = false
-rename = false
-share = false
-single_writer = true
-
-# Configure the Google Drive plugin in the Codex environment. Keep OAuth and
-# environment-specific connector settings outside the repository.
-[mcp.google_drive]
-enabled = true
-environment_specific_connection = "CONFIGURE_IN_CODEX"
+transactional = true

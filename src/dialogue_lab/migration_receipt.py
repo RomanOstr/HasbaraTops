@@ -15,19 +15,32 @@ def migration_receipt_from_mapping(payload: Mapping[str, object]) -> MigrationRe
         raise DialogueLabError(
             f"migration receipt fields mismatch; missing={missing}, extra={extra}"
         )
+    case_id_map = payload["case_id_map"]
+    if not isinstance(case_id_map, dict):
+        raise DialogueLabError("migration receipt case_id_map must be a JSON object")
+    backup_verified = payload["backup_verified"]
+    if not isinstance(backup_verified, bool):
+        raise DialogueLabError("migration receipt backup_verified must be a boolean")
     return MigrationReceipt(
+        operation=str(payload["operation"]),
         cutover_timestamp=str(payload["cutover_timestamp"]),
         timezone=str(payload["timezone"]),
-        manual_version=str(payload["manual_version"]),
-        manual_revision_state=str(payload["manual_revision_state"]),
-        case_log_schema_signature=str(payload["case_log_schema_signature"]),
-        case_log_modified_state=str(payload["case_log_modified_state"]),
+        database_schema_version_before=int(
+            str(payload["database_schema_version_before"])
+        ),
+        database_schema_version_after=int(
+            str(payload["database_schema_version_after"])
+        ),
+        database_integrity=str(payload["database_integrity"]),
+        database_backup=str(payload["database_backup"]),
+        migrated_case_count=int(str(payload["migrated_case_count"])),
+        verified_turn_count=int(str(payload["verified_turn_count"])),
+        first_case_id=str(payload["first_case_id"]),
+        last_case_id=str(payload["last_case_id"]),
+        case_id_map={str(key): str(value) for key, value in case_id_map.items()},
+        backup_verified=backup_verified,
+        committed_read_back=str(payload["committed_read_back"]),
         repository_commit=str(payload["repository_commit"]),
-        repository_tag=str(payload["repository_tag"]),
-        codex_environment=str(payload["codex_environment"]),
-        drive_connection_status=str(payload["drive_connection_status"]),
-        writer_enabled=bool(payload["writer_enabled"]),
-        previous_writer_disabled=bool(payload["previous_writer_disabled"]),
         test_results=str(payload["test_results"]),
         known_limitations=tuple(str(item) for item in _list(payload["known_limitations"])),
         rollback_instructions=tuple(str(item) for item in _list(payload["rollback_instructions"])),

@@ -14,15 +14,9 @@ CLOSED_STATUSES = {
 }
 
 ALLOWED_TRANSITIONS: dict[CaseStatus, set[CaseStatus]] = {
-    CaseStatus.DRAFT: {CaseStatus.POSTED, CaseStatus.PENDING_SYNC},
-    CaseStatus.POSTED: {CaseStatus.ACTIVE_EXCHANGE, CaseStatus.PENDING_SYNC, *CLOSED_STATUSES},
-    CaseStatus.ACTIVE_EXCHANGE: {CaseStatus.PENDING_SYNC, *CLOSED_STATUSES},
-    CaseStatus.PENDING_SYNC: {
-        CaseStatus.DRAFT,
-        CaseStatus.POSTED,
-        CaseStatus.ACTIVE_EXCHANGE,
-        *CLOSED_STATUSES,
-    },
+    CaseStatus.DRAFT: {CaseStatus.POSTED},
+    CaseStatus.POSTED: {CaseStatus.ACTIVE_EXCHANGE, *CLOSED_STATUSES},
+    CaseStatus.ACTIVE_EXCHANGE: {*CLOSED_STATUSES},
     **{status: set() for status in CLOSED_STATUSES},
 }
 
@@ -56,7 +50,7 @@ def validate_posted_turn(turn: TurnRecord) -> None:
 
 
 def validate_closure_evidence(*, claimed_persuasion: bool, evidence: set[str]) -> None:
-    """Reject outcome inference from signals the Manual says are non-probative."""
+    """Reject outcome inference from non-probative signals."""
     non_probative = {"silence", "deletion", "blocking", "reaction", "disappearance"}
     if claimed_persuasion and evidence and evidence <= non_probative:
         raise LifecycleError("persuasion cannot be inferred from the supplied closure signals")

@@ -1,37 +1,31 @@
 # Controlled rollout
 
-## Stage 1 — Local deterministic validation
+## Stage 1 - Local deterministic validation
 
-Run the frozen dependency sync, unit tests, Ruff, mypy, CLI smoke checks, synthetic eval validation, and lock reproducibility checks. Use synthetic fixtures only.
+Run unit tests, Ruff, mypy, CLI smoke checks, synthetic eval validation, and lock reproducibility checks. Use temporary SQLite databases only.
 
-## Stage 2 — Read-only Drive validation
+## Stage 2 - Canonical content preparation
 
-Connect the Google Drive plugin. Read all four canonical sources, verify Manual compatibility, verify exact Case Log schema and formulas, confirm `General responses` classification, and record source revision states. Perform no writes.
+Review repository governance, strategy, and evidence Markdown. Keep `General responses` outside the workflow unless the user explicitly names an exact action for it.
 
-## Stage 3 — Controlled write test
+## Stage 3 - Empty database validation
 
-Only after explicit approval and only when the Manual permits it, perform one safe production Case Log write and read every field back. Do not create disposable test pollution. Reconcile the record only through an authorized canonical lifecycle action.
+After explicit approval, initialize a database outside Git, run `dialogue-lab check`, create a verified backup, and record its schema signature and integrity result.
 
-## Stage 4 — Shadow use
+## Stage 4 - Deterministic import or identity migration
 
-Run Codex alongside the previous workflow while exactly one system remains writable. Compare identity, turns, exact URLs, statuses, parent graphs, factual classifications, and reply outputs. Fix the producing implementation rather than patching isolated outputs. Do not duplicate canonical public text in shadow logs.
+For an empty database, prepare one JSON snapshot containing Cases and Turns and run `db-import` once after explicit approval. For an existing schema-version-1 database, run `db-migrate-identity` with an explicitly approved outside-Git backup destination. The operation must be atomic, preserve exact public text, URLs, Turn graphs, and schema version 1, assign `Case-NNN` in stable creation/allocation order, and pass committed mapping, count, and integrity checks.
 
-Use at least ten representative shadow cases unless fewer cases exist or the user explicitly approves less. Include new intake, duplicate intake, a branch, ambiguous parentage, posting confirmation, closure, hostility, a legal claim, and a failed-write simulation.
+## Stage 5 - Shadow validation
 
-## Stage 5 — Cutover gate
+Compare Case IDs, Turns, exact URLs, statuses, parent graphs, classifications, and representative high-level command results against the source state. Verify explicit Case lookup, multi-candidate root lookup, and both Turn duplicate paths. Fix the producing implementation instead of patching individual rows.
 
-Require zero duplicate-identity mismatches, URL corruption incidents, parent-graph failures, unverified writes, protected-file write attempts, and unresolved Pending Sync records. Require all deterministic tests, lint, and type checks to pass, successful read-only Drive validation, successful approved read-back write validation when exercised, the minimum shadow sample, and explicit user approval.
+## Stage 6 - Cutover gate
 
-## Stage 6 — Cutover
+Require zero duplicate identities, URL corruption incidents, graph failures, unverified writes, schema mismatches, or integrity failures. Require checks passed, a verified backup, a complete migration receipt, and explicit user approval.
 
-Make Codex the only canonical writer, freeze the previous ChatGPT Project in reference mode, record the migration receipt, create the approved repository tag, and remain in single-writer mode. Re-enabling the old writer is an explicit rollback decision.
+## Stage 7 - Cutover
 
-## Stage 7 — Optional private GitHub and CI
+Set `DIALOGUE_LAB_DB` to the verified external database and use only high-level `dialogue-lab` commands for canonical Case and Turn operations. Keep one writer.
 
-Only after explicit approval, create a private remote, push validated history, require pull-request checks, and enable secret/dependency scanning. CI must exclude canonical exports, backups, and credentials and must never write to production Drive.
-
-## Previous runtime modes
-
-Reference mode may read historical conversations but may not allocate IDs, append turns, update lifecycle state, or write canonical files.
-
-Rollback mode requires explicit authorization and the procedure in `docs/rollback.md`. Exactly one writer must remain enabled.
+Rollback requires explicit authorization and `docs/rollback.md`.

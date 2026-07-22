@@ -12,14 +12,14 @@ from dialogue_lab.models import CaseRecord, TurnRecord
 
 def make_case(**overrides: object) -> CaseRecord:
     values: dict[str, object] = {
-        "case_id": "CASE-20260717-001",
+        "case_id": "Case-001",
         "case_title": "Synthetic policy discussion",
         "created_at": "2026-07-17 10:00",
         "updated_at": "2026-07-17 10:00",
         "status": CaseStatus.POSTED,
         "topic": "Synthetic topic",
         "post_text": "Synthetic public post text.",
-        "post_url": "https://www.facebook.com/example/posts/123",
+        "post_url": "https://www.facebook.com/example/posts/123?comment_id=456",
         "post_id": "123",
         "root_comment_id": "456",
         "privacy_checked": True,
@@ -30,7 +30,7 @@ def make_case(**overrides: object) -> CaseRecord:
 
 def make_turn(**overrides: object) -> TurnRecord:
     values: dict[str, object] = {
-        "case_id": "CASE-20260717-001",
+        "case_id": "Case-001",
         "turn_id": "T001",
         "parent_turn_id": None,
         "parent_confidence": None,

@@ -10,15 +10,15 @@ Review repository governance, strategy, and evidence Markdown. Keep `General res
 
 ## Stage 3 - Empty database validation
 
-After explicit approval, initialize a database outside Git, run `dialogue-lab doctor`, create a verified backup, and record its schema signature and integrity result.
+After explicit approval, initialize a database outside Git, run `dialogue-lab check`, create a verified backup, and record its schema signature and integrity result.
 
-## Stage 4 - Deterministic import
+## Stage 4 - Deterministic import or identity migration
 
-Prepare one JSON snapshot containing Cases and Turns. Run `db-import` once after explicit approval. The import must be atomic, preserve exact public text and URLs, reject duplicate identity, and pass committed count and integrity checks.
+For an empty database, prepare one JSON snapshot containing Cases and Turns and run `db-import` once after explicit approval. For an existing schema-version-1 database, run `db-migrate-identity` with an explicitly approved outside-Git backup destination. The operation must be atomic, preserve exact public text, URLs, Turn graphs, and schema version 1, assign `Case-NNN` in stable creation/allocation order, and pass committed mapping, count, and integrity checks.
 
 ## Stage 5 - Shadow validation
 
-Compare imported identities, turns, exact URLs, statuses, parent graphs, classifications, and representative high-level command results against the source snapshot. Fix the producing implementation instead of patching individual rows.
+Compare Case IDs, Turns, exact URLs, statuses, parent graphs, classifications, and representative high-level command results against the source state. Verify explicit Case lookup, multi-candidate root lookup, and both Turn duplicate paths. Fix the producing implementation instead of patching individual rows.
 
 ## Stage 6 - Cutover gate
 

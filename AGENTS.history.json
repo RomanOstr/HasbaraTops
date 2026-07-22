@@ -1,0 +1,88 @@
+{
+  "version": 2,
+  "entries": [
+    {
+      "id": "2026-07-22-case-turn-identity-redesign",
+      "date": "2026-07-22",
+      "rules": [
+        "HASBARA-IDENTITY-01",
+        "HASBARA-IDENTITY-02"
+      ],
+      "relations": {
+        "requires": [
+          "configured SQLite database is canonical Case and Turn state",
+          "canonical writes use explicit-approval transactional commands with read-back"
+        ]
+      },
+      "reason": "Replace mutable Facebook-root and date-scoped identity with stable Case and Turn keys.",
+      "preserved": "SQLite schema version 1, case-local Turn IDs and parent graph, explicit write approval, transactional rollback, committed read-back, and Facebook-access restrictions.",
+      "introduced": "Globally sequential Case IDs, multiple Cases per Facebook root, root candidate lookup, and deterministic Turn duplicate identities.",
+      "validation": "The candidate permits separate same-root reply branches, keeps explicit Case-ID selection definitive, covers null-parent root Turns, and excludes latest-reply identity.",
+      "original_sha256": "c11a2f51ac39e4ff2cac7dee48f581533c256b898a556c866e85e05ebb5b20e5",
+      "rules_sha256": "64e705236213c82f520f93a1f4a40cd1746cdc629c5c0def29a5ef86219009f5",
+      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42"
+    },
+    {
+      "id": "2026-07-22-canonical-markdown-check",
+      "date": "2026-07-22",
+      "rules": [
+        "HASBARA-CHECK-01",
+        "HASBARA-CANONICAL-01"
+      ],
+      "relations": {
+        "requires": [
+          "HASBARA-IDENTITY-01",
+          "explicit-approval transactional SQLite writes"
+        ]
+      },
+      "reason": "Give the mandatory readiness command a plain operational name and keep its canonical Markdown scope explicit.",
+      "preserved": "The pre-case readiness gate, SQLite schema and integrity checks, canonical Case and Turn state, and external-write restrictions.",
+      "introduced": "The check command validates canonical repository Markdown and configured SQLite before case work.",
+      "validation": "The old command name has no current reference or alias, while the readiness gate continues to hash configured repository Markdown before checking SQLite.",
+      "original_sha256": "64e705236213c82f520f93a1f4a40cd1746cdc629c5c0def29a5ef86219009f5",
+      "rules_sha256": "9f172e07852ddd349ccf7bf65ca115cc5ba8a0d05a62e629aba547ab56310830",
+      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42"
+    },
+    {
+      "id": "2026-07-22-readiness-and-open-case-presentation",
+      "date": "2026-07-22",
+      "rules": [
+        "HASBARA-CHECK-01",
+        "HASBARA-OPEN-CASES-01"
+      ],
+      "relations": {
+        "requires": [
+          "HASBARA-CANONICAL-01",
+          "HASBARA-IDENTITY-01"
+        ]
+      },
+      "reason": "Avoid redundant readiness work on ordinary reads and prevent root permalinks from being presented as latest-comment links.",
+      "preserved": "Readiness validation before canonical writes and after failures, exact supplied URL preservation, and the rule that mutable latest-Turn state is never identity.",
+      "introduced": "Read-only queries may reuse fresh evidence, and open-Case presentation reports the latest public Turn permalink or an explicit missing-link state without root fallback.",
+      "validation": "The open-Case producer selects public Turns only, exposes the selected Turn ID, reports missing URLs explicitly, and skills place readiness checks immediately before approved writes rather than routine reads.",
+      "original_sha256": "9f172e07852ddd349ccf7bf65ca115cc5ba8a0d05a62e629aba547ab56310830",
+      "rules_sha256": "a13eb777209419f0fd81ee29bde8c2c3091041ec8e737d3e1970529f7c18c0ca",
+      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42"
+    },
+    {
+      "id": "2026-07-22-readiness-evidence-reuse",
+      "date": "2026-07-22",
+      "rules": [
+        "HASBARA-CHECK-01"
+      ],
+      "relations": {
+        "requires": [
+          "HASBARA-CANONICAL-01",
+          "HASBARA-OPEN-CASES-01"
+        ]
+      },
+      "reason": "Prevent redundant readiness checks during ordinary read-only queries when fresh sufficient evidence already exists.",
+      "preserved": "Mandatory readiness checks before canonical writes, after failures, and whenever database state is uncertain.",
+      "introduced": "Ordinary read-only queries must reuse fresh sufficient readiness evidence rather than optionally rerunning the check.",
+      "validation": "The rule retains every write and uncertainty gate while making the previously optional read-only reuse behavior mandatory.",
+      "original_sha256": "a13eb777209419f0fd81ee29bde8c2c3091041ec8e737d3e1970529f7c18c0ca",
+      "rules_sha256": "0c66144eed98d6320a6d0ccbad65e84257a28f7856e28e3bc0e50b4b763f6497",
+      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42"
+    }
+  ]
+}

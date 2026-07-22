@@ -10,9 +10,11 @@
 
 ## HasbaraTops
 
-- Before case work, run `dialogue-lab doctor` against the configured SQLite database and stop if local documents, schema, or database integrity fail validation.
-- Treat repository Markdown as canonical governance, strategy, and evidence content and the configured SQLite database as canonical Case and Turn state; do not use Google Drive or MCP for Dialogue Lab work.
-- Use `config/storage.toml`; preserve the SQLite schema version and enforce unique `Post ID + Root Comment ID` identity before Case ID allocation.
+- [HASBARA-CHECK-01] Run `dialogue-lab check` before a canonical write, after a failed write or readiness check, or when database state is uncertain; ordinary read-only queries must reuse fresh sufficient evidence.
+- [HASBARA-CANONICAL-01] Treat repository Markdown as canonical governance, strategy, and evidence content and the configured SQLite database as canonical Case and Turn state; do not use MCP for Dialogue Lab work.
+- [HASBARA-IDENTITY-01] Use `config/storage.toml`; preserve the SQLite schema version; treat Case ID as definitive, allow multiple Cases per `Post ID + Root Comment ID`, and treat root lookup as candidate discovery only.
+- [HASBARA-IDENTITY-02] Deduplicate Turns by supplied `reply_comment_id`; when absent, use Case ID + Parent Turn ID (including null roots) + Direction + Exact Text; never use mutable latest-reply state as identity.
+- [HASBARA-OPEN-CASES-01] When presenting open Cases, use each Case's latest public Turn supplied exact URL; never substitute the Case root URL, and mark a missing link explicitly.
 - Invoke the matching Dialogue Lab skill for intake, follow-up, posting confirmation, closeout, or strategy review.
 - Never edit, move, rename, replace, delete, import, or summarize `General responses` without the user's explicit instruction for that exact action.
 - Perform canonical writes only through explicit-approval `dialogue-lab` commands that use SQLite transactions and committed read-back verification.

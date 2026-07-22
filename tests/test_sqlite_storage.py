@@ -6,8 +6,8 @@ import pytest
 
 from dialogue_lab.enums import CaseStatus, OutcomeClass, TurnDirection, TurnState
 from dialogue_lab.errors import DialogueLabError, StorageError, WriteSafetyError
-from dialogue_lab.storage import SQLiteStore
-from dialogue_lab.validation import validate_case
+from dialogue_lab.storage import _LEGACY_IDENTITY_SCHEMA_SIGNATURE, SQLiteStore
+from dialogue_lab.validation import validate_case, validate_turn
 from tests.helpers import make_case, make_reply, make_turn
 
 
@@ -24,7 +24,9 @@ def test_database_initialization_requires_approval_and_reports_integrity(
     assert status["case_count"] == 0
 
 
-def test_case_creation_is_atomic_unique_and_read_back(tmp_path: Path) -> None:
+def test_case_creation_is_atomic_allows_root_candidates_and_reads_back(
+    tmp_path: Path,
+) -> None:
     store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
     store.initialize(approved=True)
     case = make_case()
@@ -33,25 +35,138 @@ def test_case_creation_is_atomic_unique_and_read_back(tmp_path: Path) -> None:
     receipt = store.create_case(case, [turn], approved=True)
     assert receipt == {
         "created": True,
-        "case_id": "CASE-20260717-001",
+        "case_id": "Case-001",
         "turn_count": 1,
+        "readback": "verified",
     }
     assert store.get_case(case.case_id) == case
     assert store.get_turns(case.case_id) == [turn]
 
-    duplicate = make_case(case_id="CASE-20260717-002")
-    with pytest.raises(StorageError, match="UNIQUE"):
-        store.create_case(duplicate, [], approved=True)
-    assert store.status()["case_count"] == 1
+    candidate = make_case(case_id="Case-002")
+    store.create_case(candidate, [], approved=True)
+    assert [item.case_id for item in store.find_cases("123", "456")] == [
+        "Case-001",
+        "Case-002",
+    ]
+
+
+def test_branch_split_allocates_case_copies_ancestors_and_verifies_backup(
+    tmp_path: Path,
+) -> None:
+    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store.initialize(approved=True)
+    case = make_case(status=CaseStatus.ACTIVE_EXCHANGE)
+    root = make_turn()
+    shared_reply = make_reply(
+        "T002",
+        "T001",
+        participant_ref="USER",
+        direction=TurnDirection.OUTGOING,
+        state=TurnState.POSTED,
+        exact_text="Shared reply.",
+    )
+    first_branch = make_reply("T003", "T002", exact_text="First branch.")
+    second_branch = make_reply("T004", "T002", exact_text="Second branch.")
+    first_answer = make_reply(
+        "T005",
+        "T003",
+        participant_ref="USER",
+        direction=TurnDirection.OUTGOING,
+        state=TurnState.POSTED,
+        exact_text="First branch answer.",
+    )
+    store.create_case(
+        case,
+        [root, shared_reply, first_branch, second_branch, first_answer],
+        approved=True,
+    )
+    backup = tmp_path / "backups" / "before-split.sqlite3"
+
+    with pytest.raises(WriteSafetyError, match="approval"):
+        store.split_case_branch(
+            "Case-001",
+            "T004",
+            new_case_title="Second branch Case",
+            new_topic="Second branch topic",
+            backup_destination=backup,
+            approved=False,
+        )
+
+    receipt = store.split_case_branch(
+        "Case-001",
+        "T004",
+        new_case_title="Second branch Case",
+        new_topic="Second branch topic",
+        backup_destination=backup,
+        approved=True,
+    )
+
+    assert receipt["new_case_id"] == "Case-002"
+    assert receipt["new_branch_root_turn_id"] == "T003"
+    assert receipt["backup_verified"] is True
+    assert SQLiteStore(backup).status()["case_count"] == 1
+    assert [turn.turn_id for turn in store.get_turns("Case-001")] == [
+        "T001",
+        "T002",
+        "T003",
+        "T005",
+    ]
+    new_turns = store.get_turns("Case-002")
+    assert [(turn.turn_id, turn.parent_turn_id, turn.exact_text) for turn in new_turns] == [
+        ("T001", None, root.exact_text),
+        ("T002", "T001", shared_reply.exact_text),
+        ("T003", "T002", second_branch.exact_text),
+    ]
+    assert store.get_case("Case-002").case_title == "Second branch Case"
+    assert [item.case_id for item in store.find_cases("123", "456")] == [
+        "Case-001",
+        "Case-002",
+    ]
+
+
+def test_branch_split_failure_rolls_back_and_retains_verified_backup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store.initialize(approved=True)
+    case = make_case(status=CaseStatus.ACTIVE_EXCHANGE)
+    turns = [
+        make_turn(),
+        make_reply("T002", "T001", exact_text="Shared reply."),
+        make_reply("T003", "T002", exact_text="First branch."),
+        make_reply("T004", "T002", exact_text="Second branch."),
+    ]
+    store.create_case(case, turns, approved=True)
+    backup = tmp_path / "backups" / "before-failed-split.sqlite3"
+
+    def fail_insert(_connection: sqlite3.Connection, _record: object) -> None:
+        raise sqlite3.IntegrityError("synthetic insert failure")
+
+    monkeypatch.setattr(store, "_insert_turn", fail_insert)
+    with pytest.raises(StorageError, match="rollback verified; backup retained"):
+        store.split_case_branch(
+            "Case-001",
+            "T004",
+            new_case_title="Second branch Case",
+            new_topic="Second branch topic",
+            backup_destination=backup,
+            approved=True,
+        )
+
+    assert backup.is_file()
+    assert SQLiteStore(backup).status()["case_count"] == 1
+    assert store.case_ids() == ["Case-001"]
+    assert store.get_turns("Case-001") == turns
+    assert store.status()["integrity"] == "ok"
 
 
 def test_failed_import_rolls_back_every_row(tmp_path: Path) -> None:
     store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
     store.initialize(approved=True)
-    first = make_case(case_id="CASE-20260717-001")
-    duplicate_identity = make_case(case_id="CASE-20260717-002")
+    first = make_case(case_id="Case-001")
+    duplicate_identity = make_case(case_id="Case-001")
 
-    with pytest.raises(StorageError, match="UNIQUE"):
+    with pytest.raises(StorageError, match="duplicate Case IDs"):
         store.import_records([first, duplicate_identity], [], approved=True)
 
     assert store.status()["case_count"] == 0
@@ -164,7 +279,9 @@ def test_close_case_writes_only_validated_outcome_and_reads_back(tmp_path: Path)
     assert store.get_case(case.case_id) == closed
 
 
-def test_open_case_requires_and_returns_exact_comment_permalink(tmp_path: Path) -> None:
+def test_open_case_returns_latest_turn_permalink_without_root_fallback(
+    tmp_path: Path,
+) -> None:
     invalid = make_case(post_url="https://www.facebook.com/example/posts/123")
     with pytest.raises(DialogueLabError, match="comment or reply"):
         validate_case(invalid)
@@ -177,13 +294,40 @@ def test_open_case_requires_and_returns_exact_comment_permalink(tmp_path: Path) 
             "&__cft__[0]=tracking#comment"
         )
     )
-    store.create_case(case, [], approved=True)
+    root = make_turn(exact_url=case.post_url)
+    reply_url = (
+        "https://www.facebook.com/example/posts/123"
+        "?comment_id=456&reply_comment_id=789"
+    )
+    reply = make_reply(
+        "T002",
+        "T001",
+        exact_url=reply_url,
+        reply_comment_id="789",
+        observed_at="2026-07-17 11:00",
+    )
+    store.create_case(case, [root, reply], approved=True)
+    missing_case = make_case(case_id="Case-002")
+    missing_turn = make_turn(
+        case_id="Case-002",
+        exact_text="Latest link was not supplied.",
+    )
+    store.create_case(missing_case, [missing_turn], approved=True)
     assert store.list_open_summaries() == [
         {
             "case_id": case.case_id,
             "status": "Posted",
-            "exact_permalink": case.post_url,
-        }
+            "last_turn_id": "T002",
+            "last_comment_permalink": reply_url,
+            "permalink_status": "supplied",
+        },
+        {
+            "case_id": "Case-002",
+            "status": "Posted",
+            "last_turn_id": "T001",
+            "last_comment_permalink": None,
+            "permalink_status": "missing",
+        },
     ]
 
 
@@ -197,3 +341,277 @@ def test_backup_is_consistent_and_never_overwrites(tmp_path: Path) -> None:
     assert SQLiteStore(destination).status()["case_count"] == 1
     with pytest.raises(StorageError, match="already exists"):
         store.backup(destination, approved=True)
+
+
+def test_turn_duplicate_identity_uses_reply_id_then_null_parent_fallback(
+    tmp_path: Path,
+) -> None:
+    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store.initialize(approved=True)
+    case = make_case()
+    root = make_turn()
+    store.create_case(case, [root], approved=True)
+
+    fallback_duplicate = replace(root, turn_id="ignored", observed_at="later")
+    receipt = store.add_turn(
+        fallback_duplicate,
+        target_status=CaseStatus.ACTIVE_EXCHANGE,
+        updated_at="later",
+        reason="duplicate supplied content",
+        replace_draft_id=None,
+        approved=True,
+    )
+    assert receipt == {
+        "created": False,
+        "duplicate": True,
+        "duplicate_identity": "fallback",
+        "case_id": "Case-001",
+        "turn_id": "T001",
+    }
+
+    strong = make_reply(
+        "ignored",
+        "T001",
+        reply_comment_id="789",
+        exact_url=(
+            "https://www.facebook.com/example/posts/123"
+            "?comment_id=456&reply_comment_id=789"
+        ),
+        exact_text="First observed reply text.",
+    )
+    store.add_turn(
+        strong,
+        target_status=CaseStatus.ACTIVE_EXCHANGE,
+        updated_at=strong.observed_at,
+        reason="incoming public turn",
+        replace_draft_id=None,
+        approved=True,
+    )
+    changed_text = replace(strong, turn_id="ignored", exact_text="Edited observation.")
+    duplicate = store.add_turn(
+        changed_text,
+        target_status=CaseStatus.ACTIVE_EXCHANGE,
+        updated_at=changed_text.observed_at,
+        reason="incoming public turn",
+        replace_draft_id=None,
+        approved=True,
+    )
+    assert duplicate["duplicate"] is True
+    assert duplicate["duplicate_identity"] == "reply_comment_id"
+    assert duplicate["turn_id"] == "T002"
+
+    other_case = make_case(
+        case_id="Case-002",
+        post_url="https://www.facebook.com/example/posts/123?comment_id=999",
+        root_comment_id="999",
+    )
+    store.create_case(other_case, [], approved=True)
+    other_root = make_turn(
+        case_id="Case-002",
+        root_comment_id="999",
+        exact_text=root.exact_text,
+    )
+    other_receipt = store.add_turn(
+        other_root,
+        target_status=CaseStatus.ACTIVE_EXCHANGE,
+        updated_at=other_root.observed_at,
+        reason="same fallback tuple in another Case",
+        replace_draft_id=None,
+        approved=True,
+    )
+    assert other_receipt["created"] is True
+    cross_case = make_turn(
+        case_id="Case-002",
+        root_comment_id="999",
+        reply_comment_id="789",
+        exact_url=(
+            "https://www.facebook.com/example/posts/123"
+            "?comment_id=999&reply_comment_id=789"
+        ),
+        exact_text="Same Facebook reply in another explicit Case.",
+    )
+    with pytest.raises(StorageError, match="different Case"):
+        store.add_turn(
+            cross_case,
+            target_status=CaseStatus.ACTIVE_EXCHANGE,
+            updated_at=cross_case.observed_at,
+            reason="incoming public turn",
+            replace_draft_id=None,
+            approved=True,
+        )
+
+
+def test_permalink_reply_id_cannot_be_omitted_or_conflict() -> None:
+    exact_url = (
+        "https://www.facebook.com/example/posts/123"
+        "?comment_id=456&reply_comment_id=789"
+    )
+    with pytest.raises(DialogueLabError, match="must match"):
+        validate_turn(make_turn(exact_url=exact_url))
+    with pytest.raises(DialogueLabError, match="must match"):
+        validate_turn(make_turn(exact_url=exact_url, reply_comment_id="999"))
+    validate_turn(make_turn(exact_url=exact_url, reply_comment_id="789"))
+
+
+def test_posting_unchanged_draft_promotes_and_enriches_same_turn(tmp_path: Path) -> None:
+    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store.initialize(approved=True)
+    case = make_case(status=CaseStatus.ACTIVE_EXCHANGE)
+    root = make_turn()
+    draft = make_reply(
+        "T002",
+        "T001",
+        participant_ref="USER",
+        direction=TurnDirection.OUTGOING,
+        state=TurnState.DRAFT,
+        exact_text="Unchanged exact wording.",
+    )
+    store.create_case(case, [root, draft], approved=True)
+    posted = replace(
+        draft,
+        turn_id="ignored",
+        state=TurnState.POSTED,
+        reply_comment_id="900",
+        exact_url=(
+            "https://www.facebook.com/example/posts/123"
+            "?comment_id=456&reply_comment_id=900"
+        ),
+        url_supplied_at="2026-07-17 12:00",
+        observed_at="2026-07-17 12:00",
+    )
+
+    receipt = store.add_turn(
+        posted,
+        target_status=CaseStatus.ACTIVE_EXCHANGE,
+        updated_at=posted.observed_at,
+        reason="posting confirmed",
+        replace_draft_id="T002",
+        approved=True,
+    )
+
+    assert receipt["promoted"] is True
+    assert receipt["turn_id"] == "T002"
+    turns = store.get_turns(case.case_id)
+    assert len(turns) == 2
+    assert turns[1].state is TurnState.POSTED
+    assert turns[1].reply_comment_id == "900"
+
+
+def test_status_rejects_identity_index_tampering(tmp_path: Path) -> None:
+    path = tmp_path / "dialogue-lab.sqlite3"
+    store = SQLiteStore(path)
+    store.initialize(approved=True)
+    with sqlite3.connect(path) as connection:
+        connection.execute("DROP INDEX turns_fallback_identity_uq")
+    with pytest.raises(StorageError, match="indexes"):
+        store.status()
+
+
+def test_identity_migration_stably_renumbers_and_preserves_turn_references(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "legacy.sqlite3"
+    store = SQLiteStore(path)
+    store.initialize(approved=True)
+    later_name = make_case(case_id="Case-002", created_at="2026-07-17 10:00")
+    earlier_name = make_case(
+        case_id="Case-001",
+        created_at="2026-07-17 10:00",
+        post_url="https://www.facebook.com/example/posts/123?comment_id=999",
+        root_comment_id="999",
+    )
+    store.create_case(
+        earlier_name,
+        [make_turn(case_id="Case-001", root_comment_id="999")],
+        approved=True,
+    )
+    store.create_case(later_name, [make_turn(case_id="Case-002")], approved=True)
+    with sqlite3.connect(path) as connection:
+        table_sql = str(
+            connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'cases'"
+            ).fetchone()[0]
+        )
+        check_start = table_sql.index("case_id TEXT PRIMARY KEY CHECK")
+        check_end = table_sql.index(",\n    case_title", check_start)
+        legacy_table_sql = (
+            table_sql[:check_start]
+            + "case_id TEXT PRIMARY KEY"
+            + table_sql[check_end:]
+        )
+        connection.execute("PRAGMA writable_schema = ON")
+        connection.execute(
+            "UPDATE sqlite_master SET sql = ? WHERE type = 'table' AND name = 'cases'",
+            (legacy_table_sql,),
+        )
+        schema_version = int(connection.execute("PRAGMA schema_version").fetchone()[0])
+        connection.execute(f"PRAGMA schema_version = {schema_version + 1}")
+    with sqlite3.connect(path) as connection:
+        connection.execute("PRAGMA foreign_keys = OFF")
+        connection.execute("PRAGMA ignore_check_constraints = ON")
+        connection.execute(
+            "UPDATE turns SET case_id = 'CASE-20260717-020' WHERE case_id = 'Case-002'"
+        )
+        connection.execute(
+            "UPDATE cases SET case_id = 'CASE-20260717-020' WHERE case_id = 'Case-002'"
+        )
+        connection.execute(
+            "UPDATE turns SET case_id = 'CASE-20260716-900' WHERE case_id = 'Case-001'"
+        )
+        connection.execute(
+            "UPDATE cases SET case_id = 'CASE-20260716-900' WHERE case_id = 'Case-001'"
+        )
+        connection.execute("DROP INDEX cases_root_candidates_idx")
+        connection.execute("DROP INDEX turns_reply_comment_id_uq")
+        connection.execute("DROP INDEX turns_fallback_identity_uq")
+        connection.execute(
+            "CREATE UNIQUE INDEX legacy_root_uq ON cases(post_id, root_comment_id)"
+        )
+        connection.execute(
+            "UPDATE storage_metadata SET value = ? WHERE key = 'schema_signature'",
+            (_LEGACY_IDENTITY_SCHEMA_SIGNATURE,),
+        )
+
+    backup = tmp_path / "backups" / "before.sqlite3"
+    receipt = store.migrate_identity(backup, approved=True)
+
+    assert receipt["case_id_map"] == {
+        "CASE-20260716-900": "Case-001",
+        "CASE-20260717-020": "Case-002",
+    }
+    assert receipt["database_schema_version_after"] == 1
+    assert receipt["committed_read_back"] == "verified"
+    assert backup.is_file()
+    assert store.get_turns("Case-001")[0].case_id == "Case-001"
+
+    already_backup = tmp_path / "backups" / "already.sqlite3"
+    with pytest.raises(StorageError, match="already applied"):
+        store.migrate_identity(already_backup, approved=True)
+    assert not already_backup.exists()
+
+    conflict_path = tmp_path / "legacy-conflict.sqlite3"
+    with sqlite3.connect(backup) as source, sqlite3.connect(conflict_path) as target:
+        source.backup(target)
+    with sqlite3.connect(conflict_path) as connection:
+        connection.execute(
+            """INSERT INTO turns
+            SELECT case_id, 'T002', parent_turn_id, parent_confidence,
+                   participant_ref, direction, kind, state, exact_text, post_id,
+                   root_comment_id, reply_comment_id, exact_url, url_supplied_at,
+                   observed_at, notes
+            FROM turns
+            WHERE case_id = 'CASE-20260716-900' AND turn_id = 'T001'"""
+        )
+    failure_backup = tmp_path / "backups" / "failure.sqlite3"
+    conflict_store = SQLiteStore(conflict_path)
+    with pytest.raises(StorageError, match="rollback verified; backup retained"):
+        conflict_store.migrate_identity(failure_backup, approved=True)
+    assert failure_backup.is_file()
+    with sqlite3.connect(conflict_path) as connection:
+        assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        assert connection.execute(
+            "SELECT value FROM storage_metadata WHERE key = 'schema_signature'"
+        ).fetchone()[0] == _LEGACY_IDENTITY_SCHEMA_SIGNATURE
+        assert connection.execute(
+            "SELECT COUNT(*) FROM turns WHERE case_id = 'CASE-20260716-900'"
+        ).fetchone()[0] == 2

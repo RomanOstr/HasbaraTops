@@ -10,12 +10,10 @@ import sys
 import tomllib
 from collections.abc import Mapping
 from dataclasses import replace
-from datetime import date
 from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .case_identity import make_case_identity
 from .enums import CaseStatus, OutcomeClass, ParentConfidence, TurnDirection, TurnKind, TurnState
 from .errors import DialogueLabError, StorageError, WriteSafetyError
 from .facebook_url import parse_facebook_url
@@ -182,7 +180,7 @@ def _store(args: argparse.Namespace) -> SQLiteStore:
     return SQLiteStore(_database_path(args))
 
 
-def _doctor(args: argparse.Namespace) -> dict[str, object]:
+def _check(args: argparse.Namespace) -> dict[str, object]:
     root = _repo_root(Path.cwd())
     config_path = root / "config" / "storage.toml"
     config = _storage_config(root)
@@ -225,24 +223,27 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--database", help="SQLite path; defaults to DIALOGUE_LAB_DB")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("doctor", help="verify local docs, configuration, and database integrity")
+    sub.add_parser(
+        "check", help="verify canonical Markdown, configuration, and database integrity"
+    )
     init = sub.add_parser("db-init", help="initialize or verify the canonical SQLite database")
     _add_database_write_arguments(init)
     sub.add_parser("db-status", help="report schema, integrity, and row counts")
     backup = sub.add_parser("db-backup", help="create a consistent non-overwriting backup")
     backup.add_argument("--destination", required=True)
     _add_database_write_arguments(backup)
+    identity_migration = sub.add_parser(
+        "db-migrate-identity", help="migrate Case and Turn identity transactionally"
+    )
+    identity_migration.add_argument("--backup-destination", required=True)
+    _add_database_write_arguments(identity_migration)
     import_parser = sub.add_parser("db-import", help="atomically import cases and turns JSON")
     import_parser.add_argument("json_file")
     _add_database_write_arguments(import_parser)
 
     parse = sub.add_parser("parse-url", help="parse a Facebook URL without rewriting it")
     parse.add_argument("url")
-    case_key = sub.add_parser("case-key", help="generate normalized canonical case identity")
-    case_key.add_argument("--post-id", required=True)
-    case_key.add_argument("--root-comment-id", required=True)
-    case_id = sub.add_parser("next-case-id", help="calculate a date-local Case ID")
-    case_id.add_argument("--date", required=True)
+    case_id = sub.add_parser("next-case-id", help="calculate the next global Case ID")
     case_id.add_argument("--existing", required=True)
     turn_id = sub.add_parser("next-turn-id", help="calculate a case-local Turn ID")
     turn_id.add_argument("--case-id", required=True)
@@ -262,17 +263,28 @@ def _build_parser() -> argparse.ArgumentParser:
     receipt = sub.add_parser("migration-receipt", help="validate and render a migration receipt")
     receipt.add_argument("json_file")
 
-    find = sub.add_parser("case-find", help="resolve one Case by canonical identity")
-    find.add_argument("--post-id", required=True)
-    find.add_argument("--root-comment-id", required=True)
+    find = sub.add_parser(
+        "case-find", help="resolve by definitive Case ID or discover root candidates"
+    )
+    find.add_argument("--case-id")
+    find.add_argument("--post-id")
+    find.add_argument("--root-comment-id")
     show = sub.add_parser("case-show", help="return one Case and its complete Turn graph")
     show.add_argument("--case-id", required=True)
-    sub.add_parser("case-list-open", help="return exact open-case permalink summaries")
+    split = sub.add_parser(
+        "case-split-branch", help="move one reply branch into the next global Case"
+    )
+    split.add_argument("--case-id", required=True)
+    split.add_argument("--branch-root-turn-id", required=True)
+    split.add_argument("--new-case-title", required=True)
+    split.add_argument("--new-topic", required=True)
+    split.add_argument("--backup-destination", required=True)
+    _add_database_write_arguments(split)
+    sub.add_parser("case-list-open", help="return latest-Turn links for open Cases")
     sub.add_parser("strategy-dataset", help="return all closed Cases and their Turns")
 
     intake = sub.add_parser("case-intake", help="create one Case and initial Turns atomically")
     intake.add_argument("json_file")
-    intake.add_argument("--date", required=True)
     _add_database_write_arguments(intake)
     followup = sub.add_parser("case-followup", help="record one incoming Turn atomically")
     followup.add_argument("--case-id", required=True)
@@ -315,6 +327,16 @@ def _turn_for_case(
             "root_comment_id": case.root_comment_id,
         }
     )
+    exact_url = _optional_string(values.get("exact_url"))
+    if exact_url is not None:
+        parsed = parse_facebook_url(exact_url)
+        if parsed.reply_comment_id is not None:
+            supplied = _optional_string(values.get("reply_comment_id"))
+            if supplied is not None and supplied != parsed.reply_comment_id:
+                raise DialogueLabError(
+                    "reply_comment_id conflicts with the supplied Exact URL"
+                )
+            values["reply_comment_id"] = parsed.reply_comment_id
     return _turn_record(values)
 
 
@@ -327,6 +349,9 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
     if command == "db-backup":
         destination = _outside_repository(Path(str(args.destination)))
         return store.backup(destination, approved=bool(args.approved))
+    if command == "db-migrate-identity":
+        destination = _outside_repository(Path(str(args.backup_destination)))
+        return store.migrate_identity(destination, approved=bool(args.approved))
     if command == "db-import":
         payload = _mapping(_load_json(str(args.json_file)), "database import")
         _reject_unknown(payload, {"cases", "turns"}, "database import")
@@ -340,14 +365,42 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
         ]
         return store.import_records(cases, turns, approved=bool(args.approved))
     if command == "case-find":
-        case = store.find_case(str(args.post_id), str(args.root_comment_id))
-        result: dict[str, object] = {"found": False}
-        if case is not None:
-            result = {"found": True, "case_id": case.case_id, "status": case.status.value}
-        return result
+        case_id = _optional_string(args.case_id)
+        post_id = _optional_string(args.post_id)
+        root_comment_id = _optional_string(args.root_comment_id)
+        if case_id is not None:
+            if post_id is not None or root_comment_id is not None:
+                raise DialogueLabError(
+                    "case-find accepts either --case-id or a Post ID + Root Comment ID pair"
+                )
+            case = store.get_case(case_id)
+            return {"found": True, "case_id": case.case_id, "status": case.status.value}
+        if post_id is None or root_comment_id is None:
+            raise DialogueLabError(
+                "case-find requires --case-id or both --post-id and --root-comment-id"
+            )
+        candidates = store.find_cases(post_id, root_comment_id)
+        return {
+            "found": bool(candidates),
+            "candidate_count": len(candidates),
+            "candidates": [
+                {"case_id": case.case_id, "status": case.status.value}
+                for case in candidates
+            ],
+        }
     if command == "case-show":
         case_id = str(args.case_id)
         return {"case": store.get_case(case_id), "turns": store.get_turns(case_id)}
+    if command == "case-split-branch":
+        destination = _outside_repository(Path(str(args.backup_destination)))
+        return store.split_case_branch(
+            str(args.case_id),
+            str(args.branch_root_turn_id),
+            new_case_title=str(args.new_case_title),
+            new_topic=str(args.new_topic),
+            backup_destination=destination,
+            approved=bool(args.approved),
+        )
     if command == "case-list-open":
         return store.list_open_summaries()
     if command == "strategy-dataset":
@@ -356,25 +409,15 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
         payload = _mapping(_load_json(str(args.json_file)), "case intake")
         _reject_unknown(payload, {"case", "turns"}, "case intake")
         case_payload = _mapping(payload.get("case"), "case")
-        existing = store.find_case(
-            str(case_payload.get("post_id", "")), str(case_payload.get("root_comment_id", ""))
-        )
-        if existing is not None:
-            return {
-                "created": False,
-                "duplicate": True,
-                "case_id": existing.case_id,
-                "status": existing.status.value,
-            }
-        case_id = next_case_id(store.case_ids(), on_date=date.fromisoformat(str(args.date)))
-        case = _case_record({**case_payload, "case_id": case_id})
+        case = _case_record({**case_payload, "case_id": ""})
         initial_turns: list[TurnRecord] = []
         for item in _list(payload.get("turns", []), "turns"):
-            turn_id = next_turn_id(turn.turn_id for turn in initial_turns)
             initial_turns.append(
-                _turn_for_case(_mapping(item, "initial Turn"), case, turn_id)
+                _turn_for_case(_mapping(item, "initial Turn"), case, "")
             )
-        return store.create_case(case, initial_turns, approved=bool(args.approved))
+        return store.create_case(
+            case, initial_turns, approved=bool(args.approved), allocate_ids=True
+        )
     if command in {"case-followup", "case-record-posting"}:
         case_id = str(args.case_id)
         case = store.get_case(case_id)
@@ -382,8 +425,7 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
             raise DialogueLabError(f"case is closed: {case_id}")
         payload = _mapping(_load_json(str(args.json_file)), "Turn payload")
         _reject_unknown(payload, {*TURN_FIELDS, "draft_turn_id"}, "Turn")
-        turn_id = next_turn_id(store.turn_ids(case_id))
-        turn = _turn_for_case(payload, case, turn_id)
+        turn = _turn_for_case(payload, case, "")
         if command == "case-followup":
             if turn.direction is not TurnDirection.INCOMING:
                 raise DialogueLabError("case-followup requires an Incoming Turn")
@@ -457,18 +499,20 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
 
 def _run(args: argparse.Namespace) -> object:
     command = str(args.command)
-    if command == "doctor":
-        result = _doctor(args)
+    if command == "check":
+        result = _check(args)
         if not result["ok"]:
-            raise DialogueLabError("local doctor checks failed")
+            raise DialogueLabError("local readiness checks failed")
         return result
     database_commands = {
         "db-init",
         "db-status",
         "db-backup",
+        "db-migrate-identity",
         "db-import",
         "case-find",
         "case-show",
+        "case-split-branch",
         "case-list-open",
         "strategy-dataset",
         "case-intake",
@@ -480,13 +524,9 @@ def _run(args: argparse.Namespace) -> object:
         return _run_database_command(args, command)
     if command == "parse-url":
         return parse_facebook_url(str(args.url))
-    if command == "case-key":
-        return {"case_key": make_case_identity(args.post_id, args.root_comment_id).key}
     if command == "next-case-id":
         existing = _ids_from_json(_load_json(str(args.existing)), "case_id")
-        return {
-            "case_id": next_case_id(existing, on_date=date.fromisoformat(str(args.date)))
-        }
+        return {"case_id": next_case_id(existing)}
     if command == "next-turn-id":
         existing = _ids_from_json(
             _load_json(str(args.existing)), "turn_id", str(args.case_id)

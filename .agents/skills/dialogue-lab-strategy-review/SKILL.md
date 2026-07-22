@@ -12,7 +12,7 @@ description: Review deterministic SQLite evidence across closed Israel Facebook 
 
 ## Workflow
 
-1. Run `dialogue-lab doctor`, read `docs/reply-strategy-guide.md`, and load all closed Cases and Turns in one `dialogue-lab strategy-dataset` call.
+1. Read `docs/reply-strategy-guide.md` and load all closed Cases and Turns in one `dialogue-lab strategy-dataset` call.
 2. Reject fewer than three reasonably comparable cases. Label reviews below twenty total closed cases as preliminary.
 3. Compare topic, hostility, evidence confidence, reply length, thread position, and strategy. Separate commenter outcomes from silent-reader signals.
 4. Report sample sizes, contradictory evidence, missing data, and confounders. Do not infer causation from correlation or treat one case as a reusable finding.

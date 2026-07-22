@@ -77,9 +77,13 @@ def expected_schema_payload() -> dict[str, object]:
         "enums": {key: list(values) for key, values in EXPECTED_ENUMS.items()},
         "constraints": [
             "cases.case_id primary key",
-            "cases(post_id, root_comment_id) unique",
+            "cases.case_id canonical positive Case-NNN check",
+            "cases(post_id, root_comment_id) candidate index",
             "turns(case_id, turn_id) primary key",
             "turns.case_id references cases.case_id",
+            "turns.reply_comment_id globally unique when present",
+            "turns(case_id, coalesced parent_turn_id, direction, exact_text) unique "
+            "when reply_comment_id absent",
         ],
     }
 

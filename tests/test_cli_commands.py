@@ -6,6 +6,7 @@ import pytest
 from dialogue_lab.cli import main
 from dialogue_lab.enums import CaseStatus, OutcomeClass, TurnDirection, TurnState
 from dialogue_lab.models import to_jsonable
+from dialogue_lab.storage import SQLiteStore
 from tests.helpers import make_case, make_reply, make_turn
 
 
@@ -31,7 +32,7 @@ def test_transactional_case_cli_lifecycle(
     db = ("--database", str(database))
     initialized = _as_dict(_run_ok(capsys, *db, "db-init", "--approved"))
     assert initialized["integrity"] == "ok"
-    assert _as_dict(_run_ok(capsys, *db, "doctor"))["ok"] is True
+    assert _as_dict(_run_ok(capsys, *db, "check"))["ok"] is True
 
     case_payload = _as_dict(to_jsonable(make_case()))
     case_payload.pop("case_id")
@@ -46,38 +47,44 @@ def test_transactional_case_cli_lifecycle(
             *db,
             "case-intake",
             str(intake_path),
-            "--date",
-            "2026-07-17",
             "--approved",
         )
     )
     assert intake == {
         "created": True,
-        "case_id": "CASE-20260717-001",
+        "case_id": "Case-001",
         "turn_count": 1,
+        "readback": "verified",
     }
 
-    duplicate = _as_dict(
+    second = _as_dict(
         _run_ok(
             capsys,
             *db,
             "case-intake",
             str(intake_path),
-            "--date",
-            "2026-07-17",
             "--approved",
         )
     )
-    assert duplicate["duplicate"] is True
-    assert duplicate["case_id"] == "CASE-20260717-001"
+    assert second["created"] is True
+    assert second["case_id"] == "Case-002"
 
     open_cases = _run_ok(capsys, *db, "case-list-open")
     assert open_cases == [
         {
-            "case_id": "CASE-20260717-001",
+            "case_id": "Case-001",
             "status": "Posted",
-            "exact_permalink": case_payload["post_url"],
-        }
+            "last_turn_id": "T001",
+            "last_comment_permalink": None,
+            "permalink_status": "missing",
+        },
+        {
+            "case_id": "Case-002",
+            "status": "Posted",
+            "last_turn_id": "T001",
+            "last_comment_permalink": None,
+            "permalink_status": "missing",
+        },
     ]
     found = _as_dict(
         _run_ok(
@@ -90,13 +97,27 @@ def test_transactional_case_cli_lifecycle(
             "456",
         )
     )
-    assert found["case_id"] == "CASE-20260717-001"
+    assert found["candidate_count"] == 2
+    candidate_rows = found["candidates"]
+    assert isinstance(candidate_rows, list)
+    assert [item["case_id"] for item in candidate_rows] == [
+        "Case-001",
+        "Case-002",
+    ]
+    definitive = _as_dict(
+        _run_ok(capsys, *db, "case-find", "--case-id", "Case-001")
+    )
+    assert definitive["case_id"] == "Case-001"
 
     followup = make_reply(
         "ignored",
         "T001",
         observed_at="2026-07-17 11:00",
         exact_text="Synthetic follow-up.",
+        exact_url=(
+            "https://www.facebook.com/example/posts/123"
+            "?comment_id=456&reply_comment_id=789"
+        ),
     )
     followup_path = _write(tmp_path / "followup.json", followup)
     followup_receipt = _as_dict(
@@ -105,13 +126,17 @@ def test_transactional_case_cli_lifecycle(
             *db,
             "case-followup",
             "--case-id",
-            "CASE-20260717-001",
+            "Case-001",
             str(followup_path),
             "--approved",
         )
     )
     assert followup_receipt["turn_id"] == "T002"
     assert followup_receipt["status"] == "Active Exchange"
+    shown = _as_dict(
+        _run_ok(capsys, *db, "case-show", "--case-id", "Case-001")
+    )
+    assert shown["turns"][1]["reply_comment_id"] == "789"  # type: ignore[index]
 
     posted = make_reply(
         "ignored",
@@ -129,7 +154,7 @@ def test_transactional_case_cli_lifecycle(
             *db,
             "case-record-posting",
             "--case-id",
-            "CASE-20260717-001",
+            "Case-001",
             str(posting_path),
             "--approved",
         )
@@ -158,53 +183,90 @@ def test_transactional_case_cli_lifecycle(
             *db,
             "case-close",
             "--case-id",
-            "CASE-20260717-001",
+            "Case-001",
             str(close_path),
             "--approved",
         )
     )
     assert close_receipt["status"] == "Closed - Substantive"
-    assert _run_ok(capsys, *db, "case-list-open") == []
+    assert len(_run_ok(capsys, *db, "case-list-open")) == 1  # type: ignore[arg-type]
     dataset = _as_dict(_run_ok(capsys, *db, "strategy-dataset"))
     assert len(dataset["cases"]) == 1  # type: ignore[arg-type]
-    assert len(dataset["turns"]["CASE-20260717-001"]) == 3  # type: ignore[index]
+    assert len(dataset["turns"]["Case-001"]) == 3  # type: ignore[index]
+
+
+def test_case_split_branch_cli_returns_verified_mapping(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    database = tmp_path / "canonical.sqlite3"
+    store = SQLiteStore(database)
+    store.initialize(approved=True)
+    case = make_case(status=CaseStatus.ACTIVE_EXCHANGE)
+    turns = [
+        make_turn(),
+        make_reply(
+            "T002",
+            "T001",
+            participant_ref="USER",
+            direction=TurnDirection.OUTGOING,
+            state=TurnState.POSTED,
+            exact_text="Shared reply.",
+        ),
+        make_reply("T003", "T002", exact_text="First branch."),
+        make_reply("T004", "T002", exact_text="Second branch."),
+    ]
+    store.create_case(case, turns, approved=True)
+    backup = tmp_path / "before-split.sqlite3"
+
+    receipt = _as_dict(
+        _run_ok(
+            capsys,
+            "--database",
+            str(database),
+            "case-split-branch",
+            "--case-id",
+            "Case-001",
+            "--branch-root-turn-id",
+            "T004",
+            "--new-case-title",
+            "Second branch Case",
+            "--new-topic",
+            "Second branch topic",
+            "--backup-destination",
+            str(backup),
+            "--approved",
+        )
+    )
+
+    assert receipt["source_case_id"] == "Case-001"
+    assert receipt["new_case_id"] == "Case-002"
+    assert receipt["new_branch_root_turn_id"] == "T003"
+    assert receipt["committed_read_back"] == "verified"
+    assert backup.is_file()
 
 
 def test_pure_validation_commands_and_migration_receipt(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    assert _as_dict(
-        _run_ok(
-            capsys,
-            "case-key",
-            "--post-id",
-            "123",
-            "--root-comment-id",
-            "456",
-        )
-    )["case_key"] == "facebook:123:456"
-
-    ids_path = _write(tmp_path / "case-ids.json", ["CASE-20260717-001"])
+    ids_path = _write(tmp_path / "case-ids.json", ["Case-001"])
     assert _as_dict(
         _run_ok(
             capsys,
             "next-case-id",
-            "--date",
-            "2026-07-17",
             "--existing",
             str(ids_path),
         )
-    )["case_id"] == "CASE-20260717-002"
+    )["case_id"] == "Case-002"
     turns_path = _write(
         tmp_path / "turn-ids.json",
-        [{"case_id": "CASE-20260717-001", "turn_id": "T001"}],
+        [{"case_id": "Case-001", "turn_id": "T001"}],
     )
     assert _as_dict(
         _run_ok(
             capsys,
             "next-turn-id",
             "--case-id",
-            "CASE-20260717-001",
+            "Case-001",
             "--existing",
             str(turns_path),
         )
@@ -258,7 +320,7 @@ def test_pure_validation_commands_and_migration_receipt(
 
     receipt_path = Path(__file__).parents[1] / "docs" / "migration-receipt.json.example"
     receipt = _as_dict(_run_ok(capsys, "migration-receipt", str(receipt_path)))
-    assert receipt["database_schema_version"] == 1
+    assert receipt["database_schema_version_after"] == 1
 
 
 def test_write_command_rejects_missing_approval(
@@ -269,3 +331,22 @@ def test_write_command_rejects_missing_approval(
     error = json.loads(capsys.readouterr().err)
     assert error["category"] == "write_safety_error"
     assert not database.exists()
+
+    initialized = SQLiteStore(database)
+    initialized.initialize(approved=True)
+    backup = tmp_path / "identity-backup.sqlite3"
+    assert (
+        main(
+            [
+                "--database",
+                str(database),
+                "db-migrate-identity",
+                "--backup-destination",
+                str(backup),
+            ]
+        )
+        == 2
+    )
+    migration_error = json.loads(capsys.readouterr().err)
+    assert migration_error["category"] == "write_safety_error"
+    assert not backup.exists()

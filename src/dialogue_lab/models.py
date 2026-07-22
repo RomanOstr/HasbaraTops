@@ -15,30 +15,6 @@ from .enums import (
     TurnKind,
     TurnState,
 )
-from .errors import DialogueLabError
-
-
-def _required(value: str, name: str) -> str:
-    cleaned = value.strip()
-    if not cleaned:
-        raise DialogueLabError(f"{name} is required")
-    return cleaned
-
-
-@dataclass(frozen=True)
-class CaseIdentity:
-    post_id: str
-    root_comment_id: str
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "post_id", _required(self.post_id, "post_id"))
-        object.__setattr__(
-            self, "root_comment_id", _required(self.root_comment_id, "root_comment_id")
-        )
-
-    @property
-    def key(self) -> str:
-        return f"facebook:{self.post_id}:{self.root_comment_id}"
 
 
 @dataclass(frozen=True)
@@ -79,11 +55,6 @@ class CaseRecord:
     what_failed: str = ""
     next_test: str = ""
     closed_at: str = ""
-
-    @property
-    def identity(self) -> CaseIdentity:
-        return CaseIdentity(self.post_id, self.root_comment_id)
-
 
 @dataclass(frozen=True)
 class TurnRecord:
@@ -131,13 +102,20 @@ class ThreadMapEntry:
 
 @dataclass(frozen=True)
 class MigrationReceipt:
+    operation: str
     cutover_timestamp: str
     timezone: str
-    database_schema_version: int
+    database_schema_version_before: int
+    database_schema_version_after: int
     database_integrity: str
     database_backup: str
-    imported_case_count: int
-    imported_turn_count: int
+    migrated_case_count: int
+    verified_turn_count: int
+    first_case_id: str
+    last_case_id: str
+    case_id_map: Mapping[str, str]
+    backup_verified: bool
+    committed_read_back: str
     repository_commit: str
     test_results: str
     known_limitations: tuple[str, ...]

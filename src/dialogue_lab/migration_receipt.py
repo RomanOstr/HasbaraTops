@@ -15,14 +15,31 @@ def migration_receipt_from_mapping(payload: Mapping[str, object]) -> MigrationRe
         raise DialogueLabError(
             f"migration receipt fields mismatch; missing={missing}, extra={extra}"
         )
+    case_id_map = payload["case_id_map"]
+    if not isinstance(case_id_map, dict):
+        raise DialogueLabError("migration receipt case_id_map must be a JSON object")
+    backup_verified = payload["backup_verified"]
+    if not isinstance(backup_verified, bool):
+        raise DialogueLabError("migration receipt backup_verified must be a boolean")
     return MigrationReceipt(
+        operation=str(payload["operation"]),
         cutover_timestamp=str(payload["cutover_timestamp"]),
         timezone=str(payload["timezone"]),
-        database_schema_version=int(str(payload["database_schema_version"])),
+        database_schema_version_before=int(
+            str(payload["database_schema_version_before"])
+        ),
+        database_schema_version_after=int(
+            str(payload["database_schema_version_after"])
+        ),
         database_integrity=str(payload["database_integrity"]),
         database_backup=str(payload["database_backup"]),
-        imported_case_count=int(str(payload["imported_case_count"])),
-        imported_turn_count=int(str(payload["imported_turn_count"])),
+        migrated_case_count=int(str(payload["migrated_case_count"])),
+        verified_turn_count=int(str(payload["verified_turn_count"])),
+        first_case_id=str(payload["first_case_id"]),
+        last_case_id=str(payload["last_case_id"]),
+        case_id_map={str(key): str(value) for key, value in case_id_map.items()},
+        backup_verified=backup_verified,
+        committed_read_back=str(payload["committed_read_back"]),
         repository_commit=str(payload["repository_commit"]),
         test_results=str(payload["test_results"]),
         known_limitations=tuple(str(item) for item in _list(payload["known_limitations"])),

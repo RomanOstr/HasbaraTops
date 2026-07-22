@@ -16,6 +16,8 @@
 - [HASBARA-IDENTITY-02] Deduplicate Turns by supplied `reply_comment_id`; when absent, use Case ID + Parent Turn ID (including null roots) + Direction + Exact Text; never use mutable latest-reply state as identity.
 - [HASBARA-OPEN-CASES-01] When presenting open Cases, use each Case's latest public Turn supplied exact URL; never substitute the Case root URL, and mark a missing link explicitly.
 - Invoke the matching Dialogue Lab skill for intake, follow-up, posting confirmation, closeout, or strategy review.
+- [DL-REPLY-01] When proposing a public Dialogue Lab reply, provide one
+  complete, self-contained, ready-to-post response
 - Never edit, move, rename, replace, delete, import, or summarize `General responses` without the user's explicit instruction for that exact action.
 - Perform canonical writes only through explicit-approval `dialogue-lab` commands that use SQLite transactions and committed read-back verification.
 - After a failed canonical write, verify rollback and database integrity; block further writes while either remains unresolved.

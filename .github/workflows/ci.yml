@@ -25,4 +25,4 @@ jobs:
       - run: uv run pytest
       - run: uv run ruff check .
       - run: uv run mypy
-      - run: uv run dialogue-lab doctor
+      - run: uv run dialogue-lab check

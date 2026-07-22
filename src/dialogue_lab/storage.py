@@ -795,37 +795,47 @@ class SQLiteStore:
             return _find_turn_duplicate(connection, turn)
 
     def list_open_summaries(self) -> list[dict[str, object]]:
+        closed_statuses = tuple(sorted(status.value for status in CLOSED_STATUSES))
+        closed_placeholders = ", ".join("?" for _ in closed_statuses)
         with self._connect() as connection:
             rows = connection.execute(
-                "SELECT * FROM cases "
-                "ORDER BY CAST(substr(case_id, 6) AS INTEGER)"
+                f"""WITH ranked_public_turns AS (
+                    SELECT case_id, turn_id, exact_url,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY case_id
+                            ORDER BY observed_at DESC,
+                                CAST(substr(turn_id, 2) AS INTEGER) DESC
+                        ) AS turn_rank
+                    FROM turns
+                    WHERE state NOT IN (?, ?)
+                )
+                SELECT cases.case_id, cases.status,
+                    latest.turn_id AS last_turn_id,
+                    latest.exact_url AS last_comment_permalink
+                FROM cases
+                LEFT JOIN ranked_public_turns AS latest
+                    ON latest.case_id = cases.case_id
+                    AND latest.turn_rank = 1
+                WHERE cases.status NOT IN ({closed_placeholders})
+                ORDER BY CAST(substr(cases.case_id, 6) AS INTEGER)""",
+                (
+                    TurnState.DRAFT.value,
+                    TurnState.REPLACED.value,
+                    *closed_statuses,
+                ),
             ).fetchall()
-            output: list[dict[str, object]] = []
-            for row in rows:
-                case = _case_from_row(row)
-                if case.status in CLOSED_STATUSES:
-                    continue
-                public_turns = [
-                    turn
-                    for turn in self._get_turns(connection, case.case_id)
-                    if turn.state not in {TurnState.DRAFT, TurnState.REPLACED}
-                ]
-                latest = max(
-                    public_turns,
-                    key=lambda turn: (turn.observed_at, int(turn.turn_id[1:])),
-                    default=None,
-                )
-                permalink = latest.exact_url if latest is not None else None
-                output.append(
-                    {
-                        "case_id": case.case_id,
-                        "status": case.status.value,
-                        "last_turn_id": latest.turn_id if latest is not None else None,
-                        "last_comment_permalink": permalink,
-                        "permalink_status": "supplied" if permalink else "missing",
-                    }
-                )
-        return output
+        return [
+            {
+                "case_id": str(row["case_id"]),
+                "status": str(row["status"]),
+                "last_turn_id": row["last_turn_id"],
+                "last_comment_permalink": row["last_comment_permalink"],
+                "permalink_status": (
+                    "supplied" if row["last_comment_permalink"] else "missing"
+                ),
+            }
+            for row in rows
+        ]
 
     def strategy_dataset(self) -> Mapping[str, object]:
         with self._connect() as connection:

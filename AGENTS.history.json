@@ -134,6 +134,34 @@
       "global_rules_sha256": "b0df68cb05e31cf808cbcc932b71241c672471146720d99601de168c2e4ce5ce",
       "rules_sha256": "9f6fd346849cf39880007660957e0a432944004f18c5bf5e80118eb5fbea824e",
       "source_history": "The uncommitted full-reply-rule history, shipped local history, and current global OUT-03 history were consulted."
+    },
+    {
+      "id": "2026-07-22-active-rule-relation-metadata",
+      "date": "2026-07-22",
+      "rules": [
+        "HASBARA-CHECK-01",
+        "HASBARA-IDENTITY-01",
+        "HASBARA-IDENTITY-02",
+        "HASBARA-OPEN-CASES-01",
+        "DL-REPLY-01"
+      ],
+      "relation_neighbors": [
+        "HASBARA-CANONICAL-01",
+        "HASBARA-IDENTITY-01",
+        "HASBARA-IDENTITY-02",
+        "HASBARA-OPEN-CASES-01",
+        "OUT-03"
+      ],
+      "related_global_rules": [
+        "OUT-03"
+      ],
+      "reason": "Make current rule interactions queryable instead of inferring them from historical entries.",
+      "preserved": "Every prior history entry remains unchanged, and HASBARA-CHECK-01 has no current relation to HASBARA-OPEN-CASES-01.",
+      "introduced": "Active requires and limits metadata for canonical state, Case and Turn identity, open-Case presentation, and complete public replies.",
+      "validation": "The rule-history helper resolves direct current neighbors across the local and global rule sources without unknown IDs.",
+      "global_rules_sha256": "b0df68cb05e31cf808cbcc932b71241c672471146720d99601de168c2e4ce5ce",
+      "original_sha256": "9f6fd346849cf39880007660957e0a432944004f18c5bf5e80118eb5fbea824e",
+      "rules_sha256": "ae6738bd2deca5db34ee3c1ec0832aec84c6d84d0c2c0bfb0080fb93fe830a68"
     }
   ]
 }

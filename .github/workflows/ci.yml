@@ -13,8 +13,6 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    env:
-      DIALOGUE_LAB_DB: ${{ runner.temp }}/dialogue-lab-ci.sqlite3
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
@@ -28,4 +26,8 @@ jobs:
       - run: uv run ruff check .
       - run: uv run mypy
       - run: uv run dialogue-lab db-init --approved
+        env:
+          DIALOGUE_LAB_DB: ${{ runner.temp }}/dialogue-lab-ci.sqlite3
       - run: uv run dialogue-lab check
+        env:
+          DIALOGUE_LAB_DB: ${{ runner.temp }}/dialogue-lab-ci.sqlite3

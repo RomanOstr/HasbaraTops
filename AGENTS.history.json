@@ -83,6 +83,85 @@
       "original_sha256": "a13eb777209419f0fd81ee29bde8c2c3091041ec8e737d3e1970529f7c18c0ca",
       "rules_sha256": "0c66144eed98d6320a6d0ccbad65e84257a28f7856e28e3bc0e50b4b763f6497",
       "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42"
+    },
+    {
+      "id": "2026-07-22-complete-public-replies",
+      "date": "2026-07-22",
+      "rules": [
+        "DL-REPLY-01"
+      ],
+      "related_global_rules": [
+        "OUT-03"
+      ],
+      "reason": "A recommended public reply was delivered as staged fragments and was later expanded using private planning instead of as one complete response to the supplied public exchange.",
+      "preserved": "Reply brevity, one-pivotal-point focus, verified external fact use, and the follow-up skill's public-context boundary remain unchanged.",
+      "introduced": "DL-REPLY-01 requires complete ready-to-post text for the supplied post and target comment chain unless the user requests partial or staged content.",
+      "validation": "Replayed the fragmentary-reply and private-context failures; the rule requires a complete public-exchange reply while retaining user-requested fragments and verified external facts.",
+      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42",
+      "rules_sha256": "8cb6faeeee366a2b175440bc30f776821acb9739a06ed47765ab59d78e18dfea",
+      "source_history": "Targeted Git history was used because no prior local AGENTS.history.json existed."
+    },
+    {
+      "id": "2026-07-22-unconditional-complete-public-replies",
+      "date": "2026-07-22",
+      "rules": [
+        "DL-REPLY-01"
+      ],
+      "related_global_rules": [
+        "OUT-03"
+      ],
+      "reason": "The user required every proposed public Dialogue Lab reply to be complete and ready to post, without a partial-or-staged exception.",
+      "preserved": "Self-contained ready-to-post output remains required; fact verification and public-context isolation remain separate in the follow-up skill.",
+      "introduced": "DL-REPLY-01 now unconditionally requires one complete, self-contained, ready-to-post response.",
+      "validation": "Replayed full and partial reply outputs; a complete ready-to-post response passes, while partial or staged output fails regardless of request wording.",
+      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42",
+      "rules_sha256": "cbf29456442e949912c4af8e0419f2cb36cf3b8f10d2c5400486d848734dc4ba",
+      "source_history": "Prior structured local history and the related global OUT-03 history were consulted."
+    },
+    {
+      "id": "2026-07-22-reapply-complete-public-replies-to-current-release",
+      "date": "2026-07-22",
+      "rules": [
+        "DL-REPLY-01"
+      ],
+      "related_global_rules": [
+        "OUT-03"
+      ],
+      "reason": "Apply the approved complete-public-reply rule and public-context boundary to release/local rebuilt from current main.",
+      "preserved": "All shipped Case and Turn identity rules, earlier history records, current global output brevity, fact verification, and unrelated Dialogue Lab behavior remain unchanged.",
+      "introduced": "The final DL-REPLY-01 wording and matching follow-up skill boundary coexist with the shipped identity model on release/local.",
+      "validation": "Current global OUT-03 and every existing local rule were re-read; concise output remains compatible with one complete ready-to-post public reply, and no prior history relation was rewritten.",
+      "global_rules_sha256": "b0df68cb05e31cf808cbcc932b71241c672471146720d99601de168c2e4ce5ce",
+      "rules_sha256": "9f6fd346849cf39880007660957e0a432944004f18c5bf5e80118eb5fbea824e",
+      "source_history": "The uncommitted full-reply-rule history, shipped local history, and current global OUT-03 history were consulted."
+    },
+    {
+      "id": "2026-07-22-active-rule-relation-metadata",
+      "date": "2026-07-22",
+      "rules": [
+        "HASBARA-CHECK-01",
+        "HASBARA-IDENTITY-01",
+        "HASBARA-IDENTITY-02",
+        "HASBARA-OPEN-CASES-01",
+        "DL-REPLY-01"
+      ],
+      "relation_neighbors": [
+        "HASBARA-CANONICAL-01",
+        "HASBARA-IDENTITY-01",
+        "HASBARA-IDENTITY-02",
+        "HASBARA-OPEN-CASES-01",
+        "OUT-03"
+      ],
+      "related_global_rules": [
+        "OUT-03"
+      ],
+      "reason": "Make current rule interactions queryable instead of inferring them from historical entries.",
+      "preserved": "Every prior history entry remains unchanged, and HASBARA-CHECK-01 has no current relation to HASBARA-OPEN-CASES-01.",
+      "introduced": "Active requires and limits metadata for canonical state, Case and Turn identity, open-Case presentation, and complete public replies.",
+      "validation": "The rule-history helper resolves direct current neighbors across the local and global rule sources without unknown IDs.",
+      "global_rules_sha256": "b0df68cb05e31cf808cbcc932b71241c672471146720d99601de168c2e4ce5ce",
+      "original_sha256": "9f6fd346849cf39880007660957e0a432944004f18c5bf5e80118eb5fbea824e",
+      "rules_sha256": "ae6738bd2deca5db34ee3c1ec0832aec84c6d84d0c2c0bfb0080fb93fe830a68"
     }
   ]
 }

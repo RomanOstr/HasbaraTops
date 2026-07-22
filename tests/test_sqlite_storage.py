@@ -306,7 +306,19 @@ def test_open_case_returns_latest_turn_permalink_without_root_fallback(
         reply_comment_id="789",
         observed_at="2026-07-17 11:00",
     )
-    store.create_case(case, [root, reply], approved=True)
+    later_draft = make_reply(
+        "T003",
+        "T002",
+        direction=TurnDirection.OUTGOING,
+        state=TurnState.DRAFT,
+        exact_url=(
+            "https://www.facebook.com/example/posts/123"
+            "?comment_id=456&reply_comment_id=999"
+        ),
+        reply_comment_id="999",
+        observed_at="2026-07-17 12:00",
+    )
+    store.create_case(case, [root, reply, later_draft], approved=True)
     missing_case = make_case(case_id="Case-002")
     missing_turn = make_turn(
         case_id="Case-002",

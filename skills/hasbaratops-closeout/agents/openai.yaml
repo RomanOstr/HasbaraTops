@@ -1,0 +1,4 @@
+interface:
+  display_name: "HasbaraTops Closeout"
+  short_description: "Close a case from observable outcomes"
+  default_prompt: "Use $hasbaratops-closeout to close this HasbaraTops case."

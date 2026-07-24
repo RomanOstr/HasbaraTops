@@ -1,22 +1,22 @@
 import pytest
 
-from dialogue_lab.enums import (
+from hasbaratops.enums import (
     CaseStatus,
     ParentConfidence,
     TurnDirection,
     TurnKind,
     TurnState,
 )
-from dialogue_lab.errors import DialogueLabError, GraphError, LifecycleError
-from dialogue_lab.lifecycle import (
+from hasbaratops.errors import GraphError, HasbaraTopsError, LifecycleError
+from hasbaratops.lifecycle import (
     validate_closure_evidence,
     validate_draft_creation,
     validate_posted_turn,
     validate_transition,
 )
-from dialogue_lab.models import LifecycleTransition, to_jsonable
-from dialogue_lab.parent_graph import is_branched, thread_map, validate_parent_graph
-from dialogue_lab.validation import validate_turn
+from hasbaratops.models import LifecycleTransition, to_jsonable
+from hasbaratops.parent_graph import is_branched, thread_map, validate_parent_graph
+from hasbaratops.validation import validate_turn
 from tests.helpers import make_reply, make_turn
 
 
@@ -91,9 +91,9 @@ def test_reply_without_parent_is_rejected_even_with_reply_comment_id() -> None:
 
 
 def test_participant_names_and_profile_urls_are_rejected() -> None:
-    with pytest.raises(DialogueLabError, match="Participant Ref"):
+    with pytest.raises(HasbaraTopsError, match="Participant Ref"):
         validate_turn(make_turn(participant_ref="Synthetic Name"))
-    with pytest.raises(DialogueLabError, match="Participant Ref"):
+    with pytest.raises(HasbaraTopsError, match="Participant Ref"):
         validate_turn(make_turn(participant_ref="https://facebook.com/profile"))
 
 

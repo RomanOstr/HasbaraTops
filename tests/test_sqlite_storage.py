@@ -4,17 +4,17 @@ from pathlib import Path
 
 import pytest
 
-from dialogue_lab.enums import CaseStatus, OutcomeClass, TurnDirection, TurnState
-from dialogue_lab.errors import DialogueLabError, StorageError, WriteSafetyError
-from dialogue_lab.storage import _LEGACY_IDENTITY_SCHEMA_SIGNATURE, SQLiteStore
-from dialogue_lab.validation import validate_case, validate_turn
+from hasbaratops.enums import CaseStatus, OutcomeClass, TurnDirection, TurnState
+from hasbaratops.errors import HasbaraTopsError, StorageError, WriteSafetyError
+from hasbaratops.storage import _LEGACY_IDENTITY_SCHEMA_SIGNATURE, SQLiteStore
+from hasbaratops.validation import validate_case, validate_turn
 from tests.helpers import make_case, make_reply, make_turn
 
 
 def test_database_initialization_requires_approval_and_reports_integrity(
     tmp_path: Path,
 ) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     with pytest.raises(WriteSafetyError, match="approval"):
         store.initialize(approved=False)
 
@@ -27,7 +27,7 @@ def test_database_initialization_requires_approval_and_reports_integrity(
 def test_case_creation_is_atomic_allows_root_candidates_and_reads_back(
     tmp_path: Path,
 ) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     case = make_case()
     turn = make_turn()
@@ -53,7 +53,7 @@ def test_case_creation_is_atomic_allows_root_candidates_and_reads_back(
 def test_branch_split_allocates_case_copies_ancestors_and_verifies_backup(
     tmp_path: Path,
 ) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     case = make_case(status=CaseStatus.ACTIVE_EXCHANGE)
     root = make_turn()
@@ -127,7 +127,7 @@ def test_branch_split_allocates_case_copies_ancestors_and_verifies_backup(
 def test_branch_split_failure_rolls_back_and_retains_verified_backup(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     case = make_case(status=CaseStatus.ACTIVE_EXCHANGE)
     turns = [
@@ -161,7 +161,7 @@ def test_branch_split_failure_rolls_back_and_retains_verified_backup(
 
 
 def test_failed_import_rolls_back_every_row(tmp_path: Path) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     first = make_case(case_id="Case-001")
     duplicate_identity = make_case(case_id="Case-001")
@@ -173,7 +173,7 @@ def test_failed_import_rolls_back_every_row(tmp_path: Path) -> None:
 
 
 def test_schema_version_mismatch_blocks_reads(tmp_path: Path) -> None:
-    path = tmp_path / "dialogue-lab.sqlite3"
+    path = tmp_path / "HasbaraTops.sqlite3"
     store = SQLiteStore(path)
     store.initialize(approved=True)
     with sqlite3.connect(path) as connection:
@@ -193,7 +193,7 @@ def test_initialization_refuses_an_unrelated_database(tmp_path: Path) -> None:
 
 
 def test_followup_updates_status_and_verifies_committed_turn(tmp_path: Path) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     case = make_case()
     first = make_turn()
@@ -219,7 +219,7 @@ def test_followup_updates_status_and_verifies_committed_turn(tmp_path: Path) -> 
 
 
 def test_posting_retires_named_draft_in_same_transaction(tmp_path: Path) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     case = make_case(status=CaseStatus.ACTIVE_EXCHANGE)
     first = make_turn()
@@ -256,7 +256,7 @@ def test_posting_retires_named_draft_in_same_transaction(tmp_path: Path) -> None
 
 
 def test_close_case_writes_only_validated_outcome_and_reads_back(tmp_path: Path) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     case = make_case(status=CaseStatus.ACTIVE_EXCHANGE)
     store.create_case(case, [make_turn()], approved=True)
@@ -283,10 +283,10 @@ def test_open_case_returns_latest_turn_permalink_without_root_fallback(
     tmp_path: Path,
 ) -> None:
     invalid = make_case(post_url="https://www.facebook.com/example/posts/123")
-    with pytest.raises(DialogueLabError, match="comment or reply"):
+    with pytest.raises(HasbaraTopsError, match="comment or reply"):
         validate_case(invalid)
 
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     case = make_case(
         post_url=(
@@ -344,7 +344,7 @@ def test_open_case_returns_latest_turn_permalink_without_root_fallback(
 
 
 def test_backup_is_consistent_and_never_overwrites(tmp_path: Path) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     store.create_case(make_case(), [], approved=True)
     destination = tmp_path / "backups" / "snapshot.sqlite3"
@@ -358,7 +358,7 @@ def test_backup_is_consistent_and_never_overwrites(tmp_path: Path) -> None:
 def test_turn_duplicate_identity_uses_reply_id_then_null_parent_fallback(
     tmp_path: Path,
 ) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     case = make_case()
     root = make_turn()
@@ -458,15 +458,15 @@ def test_permalink_reply_id_cannot_be_omitted_or_conflict() -> None:
         "https://www.facebook.com/example/posts/123"
         "?comment_id=456&reply_comment_id=789"
     )
-    with pytest.raises(DialogueLabError, match="must match"):
+    with pytest.raises(HasbaraTopsError, match="must match"):
         validate_turn(make_turn(exact_url=exact_url))
-    with pytest.raises(DialogueLabError, match="must match"):
+    with pytest.raises(HasbaraTopsError, match="must match"):
         validate_turn(make_turn(exact_url=exact_url, reply_comment_id="999"))
     validate_turn(make_turn(exact_url=exact_url, reply_comment_id="789"))
 
 
 def test_posting_unchanged_draft_promotes_and_enriches_same_turn(tmp_path: Path) -> None:
-    store = SQLiteStore(tmp_path / "dialogue-lab.sqlite3")
+    store = SQLiteStore(tmp_path / "HasbaraTops.sqlite3")
     store.initialize(approved=True)
     case = make_case(status=CaseStatus.ACTIVE_EXCHANGE)
     root = make_turn()
@@ -510,7 +510,7 @@ def test_posting_unchanged_draft_promotes_and_enriches_same_turn(tmp_path: Path)
 
 
 def test_status_rejects_identity_index_tampering(tmp_path: Path) -> None:
-    path = tmp_path / "dialogue-lab.sqlite3"
+    path = tmp_path / "HasbaraTops.sqlite3"
     store = SQLiteStore(path)
     store.initialize(approved=True)
     with sqlite3.connect(path) as connection:

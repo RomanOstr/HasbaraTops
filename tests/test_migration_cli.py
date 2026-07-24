@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from dialogue_lab.cli import main
-from dialogue_lab.migration_receipt import migration_receipt_from_mapping
-from dialogue_lab.models import to_jsonable
+from hasbaratops.cli import main
+from hasbaratops.migration_receipt import migration_receipt_from_mapping
+from hasbaratops.models import to_jsonable
 
 
 def test_migration_receipt_requires_database_evidence_and_git_commit() -> None:
@@ -45,7 +45,7 @@ def test_cli_parse_url_and_version_emit_success(capsys: pytest.CaptureFixture[st
 
 
 def test_no_python_module_exposes_facebook_publishing_behavior() -> None:
-    source_root = Path(__file__).parents[1] / "src" / "dialogue_lab"
+    source_root = Path(__file__).parents[1] / "src" / "hasbaratops"
     text = "\n".join(path.read_text(encoding="utf-8") for path in source_root.glob("*.py"))
     assert "post_to_facebook" not in text
     assert "publish_to_facebook" not in text

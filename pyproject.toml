@@ -3,13 +3,13 @@ requires = ["hatchling==1.31.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "israel-facebook-dialogue-lab"
+name = "hasbaratops"
 version = "0.2.0"
-description = "Deterministic local execution and SQLite storage for the Israel Facebook Dialogue Lab"
+description = "Deterministic local execution and SQLite storage for HasbaraTops"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
-authors = [{ name = "Dialogue Lab" }]
+authors = [{ name = "HasbaraTops" }]
 classifiers = [
   "License :: Other/Proprietary License",
   "Programming Language :: Python :: 3.12",
@@ -26,10 +26,10 @@ dev = [
 ]
 
 [project.scripts]
-dialogue-lab = "dialogue_lab.cli:main"
+HasbaraTops = "hasbaratops.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/dialogue_lab"]
+packages = ["src/hasbaratops"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

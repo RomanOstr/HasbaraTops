@@ -2,166 +2,43 @@
   "version": 2,
   "entries": [
     {
-      "id": "2026-07-22-case-turn-identity-redesign",
-      "date": "2026-07-22",
-      "rules": [
-        "HASBARA-IDENTITY-01",
-        "HASBARA-IDENTITY-02"
-      ],
-      "relations": {
-        "requires": [
-          "configured SQLite database is canonical Case and Turn state",
-          "canonical writes use explicit-approval transactional commands with read-back"
-        ]
-      },
-      "reason": "Replace mutable Facebook-root and date-scoped identity with stable Case and Turn keys.",
-      "preserved": "SQLite schema version 1, case-local Turn IDs and parent graph, explicit write approval, transactional rollback, committed read-back, and Facebook-access restrictions.",
-      "introduced": "Globally sequential Case IDs, multiple Cases per Facebook root, root candidate lookup, and deterministic Turn duplicate identities.",
-      "validation": "The candidate permits separate same-root reply branches, keeps explicit Case-ID selection definitive, covers null-parent root Turns, and excludes latest-reply identity.",
-      "original_sha256": "c11a2f51ac39e4ff2cac7dee48f581533c256b898a556c866e85e05ebb5b20e5",
-      "rules_sha256": "64e705236213c82f520f93a1f4a40cd1746cdc629c5c0def29a5ef86219009f5",
-      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42"
-    },
-    {
-      "id": "2026-07-22-canonical-markdown-check",
-      "date": "2026-07-22",
       "rules": [
         "HASBARA-CHECK-01",
-        "HASBARA-CANONICAL-01"
-      ],
-      "relations": {
-        "requires": [
-          "HASBARA-IDENTITY-01",
-          "explicit-approval transactional SQLite writes"
-        ]
-      },
-      "reason": "Give the mandatory readiness command a plain operational name and keep its canonical Markdown scope explicit.",
-      "preserved": "The pre-case readiness gate, SQLite schema and integrity checks, canonical Case and Turn state, and external-write restrictions.",
-      "introduced": "The check command validates canonical repository Markdown and configured SQLite before case work.",
-      "validation": "The old command name has no current reference or alias, while the readiness gate continues to hash configured repository Markdown before checking SQLite.",
-      "original_sha256": "64e705236213c82f520f93a1f4a40cd1746cdc629c5c0def29a5ef86219009f5",
-      "rules_sha256": "9f172e07852ddd349ccf7bf65ca115cc5ba8a0d05a62e629aba547ab56310830",
-      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42"
-    },
-    {
-      "id": "2026-07-22-readiness-and-open-case-presentation",
-      "date": "2026-07-22",
-      "rules": [
-        "HASBARA-CHECK-01",
-        "HASBARA-OPEN-CASES-01"
-      ],
-      "relations": {
-        "requires": [
-          "HASBARA-CANONICAL-01",
-          "HASBARA-IDENTITY-01"
-        ]
-      },
-      "reason": "Avoid redundant readiness work on ordinary reads and prevent root permalinks from being presented as latest-comment links.",
-      "preserved": "Readiness validation before canonical writes and after failures, exact supplied URL preservation, and the rule that mutable latest-Turn state is never identity.",
-      "introduced": "Read-only queries may reuse fresh evidence, and open-Case presentation reports the latest public Turn permalink or an explicit missing-link state without root fallback.",
-      "validation": "The open-Case producer selects public Turns only, exposes the selected Turn ID, reports missing URLs explicitly, and skills place readiness checks immediately before approved writes rather than routine reads.",
-      "original_sha256": "9f172e07852ddd349ccf7bf65ca115cc5ba8a0d05a62e629aba547ab56310830",
-      "rules_sha256": "a13eb777209419f0fd81ee29bde8c2c3091041ec8e737d3e1970529f7c18c0ca",
-      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42"
-    },
-    {
-      "id": "2026-07-22-readiness-evidence-reuse",
-      "date": "2026-07-22",
-      "rules": [
-        "HASBARA-CHECK-01"
-      ],
-      "relations": {
-        "requires": [
-          "HASBARA-CANONICAL-01",
-          "HASBARA-OPEN-CASES-01"
-        ]
-      },
-      "reason": "Prevent redundant readiness checks during ordinary read-only queries when fresh sufficient evidence already exists.",
-      "preserved": "Mandatory readiness checks before canonical writes, after failures, and whenever database state is uncertain.",
-      "introduced": "Ordinary read-only queries must reuse fresh sufficient readiness evidence rather than optionally rerunning the check.",
-      "validation": "The rule retains every write and uncertainty gate while making the previously optional read-only reuse behavior mandatory.",
-      "original_sha256": "a13eb777209419f0fd81ee29bde8c2c3091041ec8e737d3e1970529f7c18c0ca",
-      "rules_sha256": "0c66144eed98d6320a6d0ccbad65e84257a28f7856e28e3bc0e50b4b763f6497",
-      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42"
-    },
-    {
-      "id": "2026-07-22-complete-public-replies",
-      "date": "2026-07-22",
-      "rules": [
-        "DL-REPLY-01"
-      ],
-      "related_global_rules": [
-        "OUT-03"
-      ],
-      "reason": "A recommended public reply was delivered as staged fragments and was later expanded using private planning instead of as one complete response to the supplied public exchange.",
-      "preserved": "Reply brevity, one-pivotal-point focus, verified external fact use, and the follow-up skill's public-context boundary remain unchanged.",
-      "introduced": "DL-REPLY-01 requires complete ready-to-post text for the supplied post and target comment chain unless the user requests partial or staged content.",
-      "validation": "Replayed the fragmentary-reply and private-context failures; the rule requires a complete public-exchange reply while retaining user-requested fragments and verified external facts.",
-      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42",
-      "rules_sha256": "8cb6faeeee366a2b175440bc30f776821acb9739a06ed47765ab59d78e18dfea",
-      "source_history": "Targeted Git history was used because no prior local AGENTS.history.json existed."
-    },
-    {
-      "id": "2026-07-22-unconditional-complete-public-replies",
-      "date": "2026-07-22",
-      "rules": [
-        "DL-REPLY-01"
-      ],
-      "related_global_rules": [
-        "OUT-03"
-      ],
-      "reason": "The user required every proposed public Dialogue Lab reply to be complete and ready to post, without a partial-or-staged exception.",
-      "preserved": "Self-contained ready-to-post output remains required; fact verification and public-context isolation remain separate in the follow-up skill.",
-      "introduced": "DL-REPLY-01 now unconditionally requires one complete, self-contained, ready-to-post response.",
-      "validation": "Replayed full and partial reply outputs; a complete ready-to-post response passes, while partial or staged output fails regardless of request wording.",
-      "global_rules_sha256": "8ef798b3330613534c7b03ca75aeb7fb9413a4c6774e2f7388d258a09140ed42",
-      "rules_sha256": "cbf29456442e949912c4af8e0419f2cb36cf3b8f10d2c5400486d848734dc4ba",
-      "source_history": "Prior structured local history and the related global OUT-03 history were consulted."
-    },
-    {
-      "id": "2026-07-22-reapply-complete-public-replies-to-current-release",
-      "date": "2026-07-22",
-      "rules": [
-        "DL-REPLY-01"
-      ],
-      "related_global_rules": [
-        "OUT-03"
-      ],
-      "reason": "Apply the approved complete-public-reply rule and public-context boundary to release/local rebuilt from current main.",
-      "preserved": "All shipped Case and Turn identity rules, earlier history records, current global output brevity, fact verification, and unrelated Dialogue Lab behavior remain unchanged.",
-      "introduced": "The final DL-REPLY-01 wording and matching follow-up skill boundary coexist with the shipped identity model on release/local.",
-      "validation": "Current global OUT-03 and every existing local rule were re-read; concise output remains compatible with one complete ready-to-post public reply, and no prior history relation was rewritten.",
-      "global_rules_sha256": "b0df68cb05e31cf808cbcc932b71241c672471146720d99601de168c2e4ce5ce",
-      "rules_sha256": "9f6fd346849cf39880007660957e0a432944004f18c5bf5e80118eb5fbea824e",
-      "source_history": "The uncommitted full-reply-rule history, shipped local history, and current global OUT-03 history were consulted."
-    },
-    {
-      "id": "2026-07-22-active-rule-relation-metadata",
-      "date": "2026-07-22",
-      "rules": [
-        "HASBARA-CHECK-01",
-        "HASBARA-IDENTITY-01",
-        "HASBARA-IDENTITY-02",
-        "HASBARA-OPEN-CASES-01",
-        "DL-REPLY-01"
-      ],
-      "relation_neighbors": [
         "HASBARA-CANONICAL-01",
         "HASBARA-IDENTITY-01",
         "HASBARA-IDENTITY-02",
-        "HASBARA-OPEN-CASES-01",
+        "HASBARA-OPEN-CASES-01"
+      ],
+      "decision": "Use repository Markdown and the configured SQLite database as canonical state, stable Case and Turn keys, candidate-only Facebook-root lookup, reusable fresh read evidence, and exact latest-public-Turn links.",
+      "reason": "Prevent mutable root, date, latest-reply, and presentation state from becoming identity while preserving an explicit readiness gate for canonical writes.",
+      "regression": "Preserve schema version 1, multiple Cases per Facebook root, null-parent Turn identity, explicit transactional approval and read-back, and the prohibition on root-URL fallback for open Cases."
+    },
+    {
+      "rules": [
+        "HASBARATOPS-REPLY-01",
         "OUT-03"
       ],
-      "related_global_rules": [
-        "OUT-03"
+      "decision": "Every proposed public HasbaraTops reply is one complete, self-contained, ready-to-post response while remaining concise.",
+      "reason": "Prevent staged fragments and private planning context from replacing a complete response to the supplied public exchange.",
+      "regression": "Preserve concise one-point replies, verified facts, public-context isolation, and the ban on partial or staged output."
+    },
+    {
+      "rules": [
+        "*"
       ],
-      "reason": "Make current rule interactions queryable instead of inferring them from historical entries.",
-      "preserved": "Every prior history entry remains unchanged, and HASBARA-CHECK-01 has no current relation to HASBARA-OPEN-CASES-01.",
-      "introduced": "Active requires and limits metadata for canonical state, Case and Turn identity, open-Case presentation, and complete public replies.",
-      "validation": "The rule-history helper resolves direct current neighbors across the local and global rule sources without unknown IDs.",
-      "global_rules_sha256": "b0df68cb05e31cf808cbcc932b71241c672471146720d99601de168c2e4ce5ce",
-      "original_sha256": "9f6fd346849cf39880007660957e0a432944004f18c5bf5e80118eb5fbea824e",
-      "rules_sha256": "ae6738bd2deca5db34ee3c1ec0832aec84c6d84d0c2c0bfb0080fb93fe830a68"
+      "decision": "Keep local AGENTS rules structured and project-specific; global instructions own general worktree, maintenance, and output policy.",
+      "reason": "Prevent invalid unnumbered rules and duplicated global governance from drifting inside the HasbaraTops scope.",
+      "regression": "Preserve every Hasbara canonical-state, identity, write-safety, Facebook, protected-document, and reply-completeness boundary."
+    },
+    {
+      "rules": [
+        "HASBARA-SKILLS-SOURCE-01",
+        "HASBARA-SKILLS-LIFECYCLE-01",
+        "FILE-02"
+      ],
+      "decision": "Use repo-root skills as the sole HasbaraTops skill source and route compatible skill maintenance, installation, and staging through the lifecycle and repository installer.",
+      "reason": "Replace the obsolete source layout and nonexistent installer command with the current Ceratops-compatible ownership model.",
+      "regression": "Retain task-worktree isolation, prevent duplicate skill sources, and do not imply that runtime installation occurs without explicit scope."
     }
   ]
 }

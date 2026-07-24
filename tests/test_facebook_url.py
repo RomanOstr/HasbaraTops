@@ -1,5 +1,5 @@
-from dialogue_lab.facebook_url import parse_facebook_url
-from dialogue_lab.models import to_jsonable
+from hasbaratops.facebook_url import parse_facebook_url
+from hasbaratops.models import to_jsonable
 
 
 def test_numeric_reel_and_comment_parse_with_exact_url_preserved() -> None:

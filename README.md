@@ -1,6 +1,6 @@
-# Israel Facebook Dialogue Lab
+# HasbaraTops
 
-This repository is the canonical governance and execution layer for the Dialogue Lab. Repository Markdown owns governance, strategy, and reusable evidence. One SQLite database outside Git owns Case and Turn state.
+This repository is the canonical governance and execution layer for HasbaraTops. Repository Markdown owns governance, strategy, and reusable evidence. One SQLite database outside Git owns Case and Turn state.
 
 The runtime reads repository Markdown and the configured SQLite database only.
 
@@ -11,8 +11,8 @@ AGENTS.md                         canonical governance
 docs/reply-strategy-guide.md     canonical cross-case strategy
 docs/evidence-base.md            canonical reusable evidence
 external SQLite database         canonical Cases and Turns
-dialogue-lab CLI                 only canonical storage boundary
-.agents/skills/                  model-driven analysis and reply workflows
+HasbaraTops CLI                 only canonical storage boundary
+skills/                          model-driven analysis and reply workflows
 ```
 
 `General responses` is protected and outside this workflow. The CLI exposes no operation for it.
@@ -27,36 +27,36 @@ The model owns interpretation, materially ambiguous parentage, reply drafting, f
 
 ```powershell
 uv sync --frozen --extra dev
-$env:DIALOGUE_LAB_DB = '<outside-repo>\dialogue-lab.sqlite3'
-uv run dialogue-lab db-init --approved
-uv run dialogue-lab check
+$env:HASBARATOPS_DB = '<outside-repo>\HasbaraTops.sqlite3'
+uv run HasbaraTops db-init --approved
+uv run HasbaraTops check
 ```
 
-`DIALOGUE_LAB_DB` must resolve outside the Git repository. `--database <path>` may override it and must appear before the subcommand.
+`HASBARATOPS_DB` must resolve outside the Git repository. `--database <path>` may override it and must appear before the subcommand.
 
 Database initialization, imports, backups, and Case or Turn mutations require `--approved`. Read commands do not mutate state.
 
 ## High-level commands
 
 ```text
-dialogue-lab check
-dialogue-lab db-init --approved
-dialogue-lab db-status
-dialogue-lab db-backup --destination <outside-repo-path> --approved
-dialogue-lab db-import <snapshot.json> --approved
-dialogue-lab db-migrate-identity --backup-destination <outside-repo-path> --approved
+HasbaraTops check
+HasbaraTops db-init --approved
+HasbaraTops db-status
+HasbaraTops db-backup --destination <outside-repo-path> --approved
+HasbaraTops db-import <snapshot.json> --approved
+HasbaraTops db-migrate-identity --backup-destination <outside-repo-path> --approved
 
-dialogue-lab case-find --case-id <Case-NNN>
-dialogue-lab case-find --post-id <id> --root-comment-id <id>
-dialogue-lab case-show --case-id <id>
-dialogue-lab case-split-branch --case-id <id> --branch-root-turn-id <turn-id> --new-case-title <title> --new-topic <topic> --backup-destination <outside-repo-path> --approved
-dialogue-lab case-list-open
-dialogue-lab strategy-dataset
+HasbaraTops case-find --case-id <Case-NNN>
+HasbaraTops case-find --post-id <id> --root-comment-id <id>
+HasbaraTops case-show --case-id <id>
+HasbaraTops case-split-branch --case-id <id> --branch-root-turn-id <turn-id> --new-case-title <title> --new-topic <topic> --backup-destination <outside-repo-path> --approved
+HasbaraTops case-list-open
+HasbaraTops strategy-dataset
 
-dialogue-lab case-intake <payload.json> --approved
-dialogue-lab case-followup --case-id <id> <payload.json> --approved
-dialogue-lab case-record-posting --case-id <id> <payload.json> --approved
-dialogue-lab case-close --case-id <id> <payload.json> --approved
+HasbaraTops case-intake <payload.json> --approved
+HasbaraTops case-followup --case-id <id> <payload.json> --approved
+HasbaraTops case-record-posting --case-id <id> <payload.json> --approved
+HasbaraTops case-close --case-id <id> <payload.json> --approved
 ```
 
 The high-level write commands allocate identifiers, validate all affected records, write inside an immediate SQLite transaction, commit, reopen, and compare the committed records. Errors produce compact JSON on stderr and a nonzero exit code.
@@ -71,15 +71,31 @@ A non-null `reply_comment_id` from a supplied permalink is globally unique acros
 
 `case-list-open` returns one row per Case with the latest public Turn's supplied exact URL. It never substitutes the Case root URL; when the latest Turn has no supplied URL, it returns `permalink_status: "missing"` and a null permalink. This ordering is presentation only and never identity. When sibling branches in one Case must be tracked independently, `case-split-branch` keeps the selected branch in a newly allocated Case, copies its shared ancestor path with fresh case-local Turn IDs, creates a verified backup, commits transactionally, and reads both graphs back. It refuses to copy a shared ancestor carrying a globally unique `reply_comment_id`.
 
-## Dialogue workflows
+## Skills
 
-- Intake: `$dialogue-lab-intake`
-- Follow-up: `$dialogue-lab-followup`
-- Posting confirmation: `$dialogue-lab-posting`
-- Closeout: `$dialogue-lab-closeout`
-- Strategy review: `$dialogue-lab-strategy-review`
+| Skill | Purpose |
+| --- | --- |
+| `hasbaratops-intake` | Start or identify a case and prepare an approval-gated intake transaction. |
+| `hasbaratops-followup` | Process a public turn in an existing case and prepare one follow-up transaction. |
+| `hasbaratops-posting` | Record an explicitly confirmed published reply without posting to Facebook. |
+| `hasbaratops-closeout` | Close a case from observable evidence through one approved transaction. |
+| `hasbaratops-strategy-review` | Review closed-case evidence and propose strategy-guide changes. |
+
+## HasbaraTops workflows
+
+- Intake: `$hasbaratops-intake`
+- Follow-up: `$hasbaratops-followup`
+- Posting confirmation: `$hasbaratops-posting`
+- Closeout: `$hasbaratops-closeout`
+- Strategy review: `$hasbaratops-strategy-review`
 
 Skills use read commands automatically. They may pass `--approved` only after the user approves the exact canonical write. No skill publishes to Facebook.
+
+Install the managed Codex skills after repository setup:
+
+```powershell
+python scripts/install-skills.py --repo-root .
+```
 
 ## Import and identity migration
 

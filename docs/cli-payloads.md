@@ -95,7 +95,7 @@ A posting payload must use `direction: "Outgoing"` and `state: "Posted"`. It may
 ## Branch split
 
 ```text
-dialogue-lab case-split-branch --case-id <id> --branch-root-turn-id <turn-id> --new-case-title <title> --new-topic <topic> --backup-destination <outside-repo-path> --approved
+HasbaraTops case-split-branch --case-id <id> --branch-root-turn-id <turn-id> --new-case-title <title> --new-topic <topic> --backup-destination <outside-repo-path> --approved
 ```
 
 The branch root must be a non-root Turn with another branch remaining in the source Case. The command allocates the next global Case ID, copies the shared ancestor path with fresh case-local Turn IDs, moves the selected branch and all descendants, preserves exact public text and URLs, and verifies the backup and both committed graphs. It stops when a copied shared ancestor has `reply_comment_id`, because that identifier is globally unique.
@@ -125,7 +125,7 @@ Only closure fields are updated. The Case identity and public context remain unc
 ## Identity migration
 
 ```text
-dialogue-lab db-migrate-identity --backup-destination <outside-repo-path> --approved
+HasbaraTops db-migrate-identity --backup-destination <outside-repo-path> --approved
 ```
 
 This command is the only supported path for renumbering an existing canonical database. It requires explicit approval, creates and verifies a non-overwriting backup, preserves schema version 1, renumbers Cases in stable creation/allocation order, updates every Turn and graph reference transactionally, and verifies the committed mapping and integrity before success. Its JSON receipt reports the backup, unchanged schema version, migrated counts, committed read-back, and integrity result. A failed migration rolls back and blocks further writes until rollback and integrity are verified.

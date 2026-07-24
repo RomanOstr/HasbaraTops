@@ -1,13 +1,13 @@
 """Synthetic records shared by deterministic tests."""
 
-from dialogue_lab.enums import (
+from hasbaratops.enums import (
     CaseStatus,
     ParentConfidence,
     TurnDirection,
     TurnKind,
     TurnState,
 )
-from dialogue_lab.models import CaseRecord, TurnRecord
+from hasbaratops.models import CaseRecord, TurnRecord
 
 
 def make_case(**overrides: object) -> CaseRecord:

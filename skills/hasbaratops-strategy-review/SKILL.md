@@ -1,9 +1,9 @@
 ---
-name: dialogue-lab-strategy-review
-description: Review deterministic SQLite evidence across closed Israel Facebook Dialogue Lab cases and propose, but never apply, repository strategy-guide changes.
+name: hasbaratops-strategy-review
+description: Review deterministic SQLite evidence across closed HasbaraTops cases and propose, but never apply, repository strategy-guide changes.
 ---
 
-# Dialogue Lab Strategy Review
+# HasbaraTops Strategy Review
 
 ## Required inputs
 
@@ -12,16 +12,12 @@ description: Review deterministic SQLite evidence across closed Israel Facebook 
 
 ## Workflow
 
-1. Read `docs/reply-strategy-guide.md` and load all closed Cases and Turns in one `dialogue-lab strategy-dataset` call.
+1. Read `docs/reply-strategy-guide.md` and load all closed Cases and Turns in one `HasbaraTops strategy-dataset` call.
 2. Reject fewer than three reasonably comparable cases. Label reviews below twenty total closed cases as preliminary.
 3. Compare topic, hostility, evidence confidence, reply length, thread position, and strategy. Separate commenter outcomes from silent-reader signals.
 4. Report sample sizes, contradictory evidence, missing data, and confounders. Do not infer causation from correlation or treat one case as a reusable finding.
 5. Distinguish supported findings, provisional hypotheses, and inconclusive results. Keep case-specific lessons in SQLite.
 6. Draft the smallest exact Strategy Guide change only when evidence supports it. Do not edit the guide in this run; a separate explicit approval and reviewed repository change are required.
-
-## Safety
-
-- Never access or write `General responses`, and never post to Facebook.
 
 ## Output
 

@@ -1,8 +1,8 @@
 import pytest
 
-from dialogue_lab.case_identity import find_case, find_case_candidates
-from dialogue_lab.errors import IdentifierError
-from dialogue_lab.identifiers import next_case_id, next_turn_id
+from hasbaratops.case_identity import find_case, find_case_candidates
+from hasbaratops.errors import IdentifierError
+from hasbaratops.identifiers import next_case_id, next_turn_id
 from tests.helpers import make_case
 
 

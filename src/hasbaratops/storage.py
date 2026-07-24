@@ -1,4 +1,4 @@
-"""Transactional SQLite storage for canonical Dialogue Lab case state.
+"""Transactional SQLite storage for canonical HasbaraTops case state.
 
 All mutations require an explicit approval flag, run inside an immediate
 transaction, and are read back after commit. The caller supplies the database

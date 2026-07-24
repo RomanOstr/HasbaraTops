@@ -1,10 +1,10 @@
 [project]
-name = "Israel Facebook Dialogue Lab"
+name = "HasbaraTops"
 timezone = "Asia/Jerusalem"
 
 [database]
 schema_version = 1
-path_environment_variable = "DIALOGUE_LAB_DB"
+path_environment_variable = "HASBARATOPS_DB"
 
 [documents]
 governance = "AGENTS.md"

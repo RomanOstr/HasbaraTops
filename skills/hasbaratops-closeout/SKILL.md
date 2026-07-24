@@ -1,9 +1,9 @@
 ---
-name: dialogue-lab-closeout
-description: Close an Israel Facebook Dialogue Lab case from observable evidence and record the result through one approval-gated SQLite transaction.
+name: hasbaratops-closeout
+description: Close a HasbaraTops case from observable evidence and record the result through one approval-gated SQLite transaction.
 ---
 
-# Dialogue Lab Closeout
+# HasbaraTops Closeout
 
 ## Required inputs
 
@@ -13,15 +13,14 @@ description: Close an Israel Facebook Dialogue Lab case from observable evidence
 ## Workflow
 
 1. Load the complete Case and Turn graph once with `case-show`.
-2. Resolve any missing public Turn through `$dialogue-lab-followup` before closure.
+2. Resolve any missing public Turn through `$hasbaratops-followup` before closure.
 3. Verify privacy and record observable chronology only. Never infer persuasion from silence, deletion, blocking, a reaction, or disappearance.
 4. Choose the closed status, Outcome Class, highest outcome score reached, concise Outcome Notes, What Worked, What Failed, and exactly one Next Test.
-5. Prepare one closeout payload. After explicit approval, run `dialogue-lab check`; if it passes, run exactly one `dialogue-lab case-close --case-id <id> <payload> --approved` transaction and report its compact receipt.
+5. Prepare one closeout payload. After explicit approval, run `HasbaraTops check`; if it passes, run exactly one `HasbaraTops case-close --case-id <id> <payload> --approved` transaction and report its compact receipt.
 
 ## Safety
 
 - Do not close solely because no new message is visible unless the user requests or reports no-response closure.
-- Never access or write `General responses`, and never post to Facebook.
 
 ## Output
 

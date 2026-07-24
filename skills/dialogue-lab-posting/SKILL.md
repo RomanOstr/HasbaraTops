@@ -22,7 +22,6 @@ description: Record a user's explicit confirmation that a Dialogue Lab reply was
 
 - Never publish, edit, or delete Facebook content.
 - Never assume the posted text equals an earlier draft.
-- Never access or write `General responses`.
 
 ## Output
 

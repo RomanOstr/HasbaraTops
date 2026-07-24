@@ -12,7 +12,7 @@ docs/reply-strategy-guide.md     canonical cross-case strategy
 docs/evidence-base.md            canonical reusable evidence
 external SQLite database         canonical Cases and Turns
 dialogue-lab CLI                 only canonical storage boundary
-.agents/skills/                  model-driven analysis and reply workflows
+skills/                          model-driven analysis and reply workflows
 ```
 
 `General responses` is protected and outside this workflow. The CLI exposes no operation for it.
@@ -71,6 +71,16 @@ A non-null `reply_comment_id` from a supplied permalink is globally unique acros
 
 `case-list-open` returns one row per Case with the latest public Turn's supplied exact URL. It never substitutes the Case root URL; when the latest Turn has no supplied URL, it returns `permalink_status: "missing"` and a null permalink. This ordering is presentation only and never identity. When sibling branches in one Case must be tracked independently, `case-split-branch` keeps the selected branch in a newly allocated Case, copies its shared ancestor path with fresh case-local Turn IDs, creates a verified backup, commits transactionally, and reads both graphs back. It refuses to copy a shared ancestor carrying a globally unique `reply_comment_id`.
 
+## Skills
+
+| Skill | Purpose |
+| --- | --- |
+| `dialogue-lab-intake` | Start or identify a case and prepare an approval-gated intake transaction. |
+| `dialogue-lab-followup` | Process a public turn in an existing case and prepare one follow-up transaction. |
+| `dialogue-lab-posting` | Record an explicitly confirmed published reply without posting to Facebook. |
+| `dialogue-lab-closeout` | Close a case from observable evidence through one approved transaction. |
+| `dialogue-lab-strategy-review` | Review closed-case evidence and propose strategy-guide changes. |
+
 ## Dialogue workflows
 
 - Intake: `$dialogue-lab-intake`
@@ -80,6 +90,12 @@ A non-null `reply_comment_id` from a supplied permalink is globally unique acros
 - Strategy review: `$dialogue-lab-strategy-review`
 
 Skills use read commands automatically. They may pass `--approved` only after the user approves the exact canonical write. No skill publishes to Facebook.
+
+Install the managed Codex skills after repository setup:
+
+```powershell
+python scripts/install-skills.py --repo-root .
+```
 
 ## Import and identity migration
 

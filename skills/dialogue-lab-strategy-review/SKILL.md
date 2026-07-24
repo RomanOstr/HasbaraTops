@@ -19,10 +19,6 @@ description: Review deterministic SQLite evidence across closed Israel Facebook 
 5. Distinguish supported findings, provisional hypotheses, and inconclusive results. Keep case-specific lessons in SQLite.
 6. Draft the smallest exact Strategy Guide change only when evidence supports it. Do not edit the guide in this run; a separate explicit approval and reviewed repository change are required.
 
-## Safety
-
-- Never access or write `General responses`, and never post to Facebook.
-
 ## Output
 
 Return review scope, closed-case count, comparable-case count, sample table, commenter outcomes, silent-reader signals, confounders, contradictory evidence, conclusion strength, and exact proposed Strategy Guide wording or `No change proposed`.

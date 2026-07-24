@@ -21,7 +21,6 @@ description: Close an Israel Facebook Dialogue Lab case from observable evidence
 ## Safety
 
 - Do not close solely because no new message is visible unless the user requests or reports no-response closure.
-- Never access or write `General responses`, and never post to Facebook.
 
 ## Output
 

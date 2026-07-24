@@ -1,0 +1,26 @@
+{
+  "runtime_source_id": "hasbaratops",
+  "validation_profile": "ceratops-compatible",
+  "sections": {
+    "core": "templates/sections/core.md"
+  },
+  "skills": {
+    "dialogue-lab-closeout": [
+      "core"
+    ],
+    "dialogue-lab-followup": [
+      "core"
+    ],
+    "dialogue-lab-intake": [
+      "core"
+    ],
+    "dialogue-lab-posting": [
+      "core"
+    ],
+    "dialogue-lab-strategy-review": [
+      "core"
+    ]
+  },
+  "maintenance_workflows": {},
+  "runtime_payloads": {}
+}

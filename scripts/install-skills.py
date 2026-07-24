@@ -16,7 +16,6 @@ import pathlib
 import subprocess
 import sys
 
-
 INSTALLER_VERSION = 2
 LIFECYCLE_SKILL = "ceratops-skill-lifecycle"
 RESOLVER_RELATIVE = pathlib.Path("scripts/runtime/resolve-lifecycle-bundle.py")
@@ -27,7 +26,11 @@ def codex_skills_root() -> pathlib.Path:
     """Return the personal runtime skill root used to discover the bundle."""
 
     codex_home = os.environ.get("CODEX_HOME")
-    return pathlib.Path(codex_home).expanduser() / "skills" if codex_home else pathlib.Path.home() / ".codex" / "skills"
+    return (
+        pathlib.Path(codex_home).expanduser() / "skills"
+        if codex_home
+        else pathlib.Path.home() / ".codex" / "skills"
+    )
 
 
 def resolver_path(repo_root: pathlib.Path) -> pathlib.Path:
@@ -74,9 +77,19 @@ def main() -> int:
     """Resolve one lifecycle bundle and run its validating installer."""
 
     parser = argparse.ArgumentParser(description="Install managed Ceratops-compatible skills.")
-    parser.add_argument("--repo-root", type=pathlib.Path, help="Source repository root; defaults to this script's repository.")
-    parser.add_argument("--install-root", type=pathlib.Path, help="Runtime skills root; defaults to $CODEX_HOME/skills.")
-    parser.add_argument("--skill", action="append", help="Install only this skill; repeat for multiple skills.")
+    parser.add_argument(
+        "--repo-root",
+        type=pathlib.Path,
+        help="Source repository root; defaults to this script's repository.",
+    )
+    parser.add_argument(
+        "--install-root",
+        type=pathlib.Path,
+        help="Runtime skills root; defaults to $CODEX_HOME/skills.",
+    )
+    parser.add_argument(
+        "--skill", action="append", help="Install only this skill; repeat for multiple skills."
+    )
     args = parser.parse_args()
 
     repo_root = (args.repo_root or pathlib.Path(__file__).resolve().parents[1]).resolve()

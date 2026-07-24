@@ -1,0 +1,4 @@
+interface:
+  display_name: "HasbaraTops Intake"
+  short_description: "Start or identify a HasbaraTops case"
+  default_prompt: "Use $hasbaratops-intake to analyze this Facebook reply branch."

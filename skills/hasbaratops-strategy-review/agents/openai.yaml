@@ -1,0 +1,4 @@
+interface:
+  display_name: "HasbaraTops Strategy Review"
+  short_description: "Review strategy evidence across closed cases"
+  default_prompt: "Use $hasbaratops-strategy-review to review comparable closed cases."

@@ -10,7 +10,7 @@ Before proposing a change, run:
 uv run pytest
 uv run ruff check .
 uv run mypy
-uv run dialogue-lab --database <external-test-database> doctor
+uv run HasbaraTops --database <external-test-database> doctor
 ```
 
 Contributions are accepted only under the repository's proprietary license.

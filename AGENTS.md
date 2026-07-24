@@ -1,12 +1,12 @@
 # HasbaraTops
 
-- [HASBARA-CHECK-01] Run `dialogue-lab check` before a canonical write,
+- [HASBARA-CHECK-01] Run `HasbaraTops check` before a canonical write,
   after a failed write or readiness check, or when database state is uncertain;
   ordinary read-only queries must reuse fresh sufficient evidence.
   - requires: HASBARA-CANONICAL-01
 - [HASBARA-CANONICAL-01] Treat repository Markdown as canonical governance,
   strategy, and evidence content and the configured SQLite database as canonical
-  Case and Turn state; do not use MCP for Dialogue Lab work.
+  Case and Turn state; do not use MCP for HasbaraTops work.
 - [HASBARA-IDENTITY-01] Use `config/storage.toml`, preserve the SQLite schema
   version, treat Case ID as definitive, allow multiple Cases per Facebook root,
   and use root lookup only for candidate discovery.
@@ -20,16 +20,16 @@
   supplied exact URL; never substitute the Case root URL, and mark a missing
   link explicitly.
   - requires: HASBARA-CANONICAL-01
-- [HASBARA-SKILL-ROUTING-01] Invoke the matching Dialogue Lab skill for the
+- [HASBARA-SKILL-ROUTING-01] Invoke the matching HasbaraTops skill for the
   requested case or strategy workflow.
-- [DL-REPLY-01] When proposing a public Dialogue Lab reply, provide one
+- [HASBARATOPS-REPLY-01] When proposing a public HasbaraTops reply, provide one
   complete, self-contained, ready-to-post response.
   - limits: OUT-03
 - [HASBARA-GENERAL-RESPONSES-01] Never inspect, edit, move, rename, replace,
   delete, import, or summarize `General responses` without explicit instruction
   for that exact action.
 - [HASBARA-WRITE-01] Perform canonical writes only through explicitly approved
-  `dialogue-lab` commands using SQLite transactions and committed read-back.
+  `HasbaraTops` commands using SQLite transactions and committed read-back.
   - requires: HASBARA-CHECK-01, HASBARA-CANONICAL-01
 - [HASBARA-ROLLBACK-01] After a failed canonical write, verify rollback and
   database integrity; block further writes until both pass.

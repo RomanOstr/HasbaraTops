@@ -5,19 +5,19 @@
     "core": "templates/sections/core.md"
   },
   "skills": {
-    "dialogue-lab-closeout": [
+    "hasbaratops-closeout": [
       "core"
     ],
-    "dialogue-lab-followup": [
+    "hasbaratops-followup": [
       "core"
     ],
-    "dialogue-lab-intake": [
+    "hasbaratops-intake": [
       "core"
     ],
-    "dialogue-lab-posting": [
+    "hasbaratops-posting": [
       "core"
     ],
-    "dialogue-lab-strategy-review": [
+    "hasbaratops-strategy-review": [
       "core"
     ]
   },

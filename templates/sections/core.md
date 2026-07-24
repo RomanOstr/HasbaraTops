@@ -7,8 +7,8 @@
 
 ## Core rules
 
-- Use the `dialogue-lab` CLI as the only Case and Turn storage boundary; do not
-  use MCP for Dialogue Lab work.
+- Use the `HasbaraTops` CLI as the only Case and Turn storage boundary; do not
+  use MCP for HasbaraTops work.
 - Treat repository Markdown as canonical governance, strategy, and reusable
   evidence and the configured SQLite database as canonical Case and Turn state.
 - Use only user-supplied public content and repository-owned canonical sources;
@@ -16,5 +16,5 @@
 - Never inspect or modify `General responses`. Interact with Facebook only when
   explicitly requested, and never publish autonomously.
 - Before a canonical write, require approval for the exact transaction, run
-  `dialogue-lab check`, execute one high-level write, and require committed
+  `HasbaraTops check`, execute one high-level write, and require committed
   read-back.

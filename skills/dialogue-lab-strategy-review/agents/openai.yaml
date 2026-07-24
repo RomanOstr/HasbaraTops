@@ -1,4 +1,0 @@
-interface:
-  display_name: "Dialogue Lab Strategy Review"
-  short_description: "Review strategy evidence across closed cases"
-  default_prompt: "Use $dialogue-lab-strategy-review to review comparable closed cases."

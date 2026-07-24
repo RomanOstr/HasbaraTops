@@ -24,6 +24,6 @@
     "Stop canonical writes",
     "Restore the verified SQLite backup",
     "Use the recorded pre-migration repository commit",
-    "Run dialogue-lab check against the restored database"
+    "Run HasbaraTops check against the restored database"
   ]
 }

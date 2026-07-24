@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from dialogue_lab.cli import main
-from dialogue_lab.enums import CaseStatus, OutcomeClass, TurnDirection, TurnState
-from dialogue_lab.models import to_jsonable
-from dialogue_lab.storage import SQLiteStore
+from hasbaratops.cli import main
+from hasbaratops.enums import CaseStatus, OutcomeClass, TurnDirection, TurnState
+from hasbaratops.models import to_jsonable
+from hasbaratops.storage import SQLiteStore
 from tests.helpers import make_case, make_reply, make_turn
 
 

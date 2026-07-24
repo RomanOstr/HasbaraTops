@@ -1,4 +1,4 @@
-"""Installable command-line interface for deterministic Dialogue Lab operations."""
+"""Installable command-line interface for deterministic HasbaraTops operations."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from typing import Any
 
 from . import __version__
 from .enums import CaseStatus, OutcomeClass, ParentConfidence, TurnDirection, TurnKind, TurnState
-from .errors import DialogueLabError, StorageError, WriteSafetyError
+from .errors import HasbaraTopsError, StorageError, WriteSafetyError
 from .facebook_url import parse_facebook_url
 from .identifiers import next_case_id, next_turn_id
 from .lifecycle import CLOSED_STATUSES, validate_posted_turn, validate_transition
@@ -37,13 +37,13 @@ def _load_json(path: str) -> object:
 
 def _mapping(value: object, label: str = "JSON document") -> Mapping[str, Any]:
     if not isinstance(value, dict):
-        raise DialogueLabError(f"{label} must be a JSON object")
+        raise HasbaraTopsError(f"{label} must be a JSON object")
     return value
 
 
 def _list(value: object, label: str = "JSON document") -> list[object]:
     if not isinstance(value, list):
-        raise DialogueLabError(f"{label} must be a JSON list")
+        raise HasbaraTopsError(f"{label} must be a JSON list")
     return value
 
 
@@ -62,7 +62,7 @@ def _boolean(value: object, label: str) -> bool:
         return True
     if isinstance(value, str) and value.lower() in {"false", "no"}:
         return False
-    raise DialogueLabError(f"{label} must be a boolean")
+    raise HasbaraTopsError(f"{label} must be a boolean")
 
 
 def _reject_unknown(
@@ -70,7 +70,7 @@ def _reject_unknown(
 ) -> None:
     unknown = sorted(set(payload) - allowed)
     if unknown:
-        raise DialogueLabError(f"unknown {label} fields: {', '.join(unknown)}")
+        raise HasbaraTopsError(f"unknown {label} fields: {', '.join(unknown)}")
 
 
 def _case_record(payload: Mapping[str, Any]) -> CaseRecord:
@@ -216,11 +216,11 @@ def _add_database_write_arguments(parser: argparse.ArgumentParser) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="dialogue-lab",
-        description="Deterministic local operations for the Israel Facebook Dialogue Lab",
+        prog="HasbaraTops",
+        description="Deterministic local operations for HasbaraTops",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument("--database", help="SQLite path; defaults to DIALOGUE_LAB_DB")
+    parser.add_argument("--database", help="SQLite path; defaults to HASBARATOPS_DB")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser(
@@ -333,7 +333,7 @@ def _turn_for_case(
         if parsed.reply_comment_id is not None:
             supplied = _optional_string(values.get("reply_comment_id"))
             if supplied is not None and supplied != parsed.reply_comment_id:
-                raise DialogueLabError(
+                raise HasbaraTopsError(
                     "reply_comment_id conflicts with the supplied Exact URL"
                 )
             values["reply_comment_id"] = parsed.reply_comment_id
@@ -370,13 +370,13 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
         root_comment_id = _optional_string(args.root_comment_id)
         if case_id is not None:
             if post_id is not None or root_comment_id is not None:
-                raise DialogueLabError(
+                raise HasbaraTopsError(
                     "case-find accepts either --case-id or a Post ID + Root Comment ID pair"
                 )
             case = store.get_case(case_id)
             return {"found": True, "case_id": case.case_id, "status": case.status.value}
         if post_id is None or root_comment_id is None:
-            raise DialogueLabError(
+            raise HasbaraTopsError(
                 "case-find requires --case-id or both --post-id and --root-comment-id"
             )
         candidates = store.find_cases(post_id, root_comment_id)
@@ -422,13 +422,13 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
         case_id = str(args.case_id)
         case = store.get_case(case_id)
         if case.status in CLOSED_STATUSES:
-            raise DialogueLabError(f"case is closed: {case_id}")
+            raise HasbaraTopsError(f"case is closed: {case_id}")
         payload = _mapping(_load_json(str(args.json_file)), "Turn payload")
         _reject_unknown(payload, {*TURN_FIELDS, "draft_turn_id"}, "Turn")
         turn = _turn_for_case(payload, case, "")
         if command == "case-followup":
             if turn.direction is not TurnDirection.INCOMING:
-                raise DialogueLabError("case-followup requires an Incoming Turn")
+                raise HasbaraTopsError("case-followup requires an Incoming Turn")
             target_status = CaseStatus.ACTIVE_EXCHANGE
             reason = "incoming public turn"
             replace_draft_id = None
@@ -464,7 +464,7 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
         _reject_unknown(payload, close_fields, "case close")
         status = CaseStatus(str(payload.get("status", "")))
         if status not in CLOSED_STATUSES:
-            raise DialogueLabError("case-close requires a Closed status")
+            raise HasbaraTopsError("case-close requires a Closed status")
         required_text = (
             "updated_at",
             "outcome_notes",
@@ -475,7 +475,7 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
         )
         missing = [name for name in required_text if not str(payload.get(name, "")).strip()]
         if missing or payload.get("outcome_score") is None or payload.get("outcome_class") is None:
-            raise DialogueLabError("case-close payload lacks required outcome fields")
+            raise HasbaraTopsError("case-close payload lacks required outcome fields")
         updated = replace(
             case,
             updated_at=str(payload["updated_at"]),
@@ -494,7 +494,7 @@ def _run_database_command(args: argparse.Namespace, command: str) -> object:
             reason=str(payload.get("reason", "explicit closeout")),
             approved=bool(args.approved),
         )
-    raise DialogueLabError(f"unknown database command: {command}")
+    raise HasbaraTopsError(f"unknown database command: {command}")
 
 
 def _run(args: argparse.Namespace) -> object:
@@ -502,7 +502,7 @@ def _run(args: argparse.Namespace) -> object:
     if command == "check":
         result = _check(args)
         if not result["ok"]:
-            raise DialogueLabError("local readiness checks failed")
+            raise HasbaraTopsError("local readiness checks failed")
         return result
     database_commands = {
         "db-init",
@@ -557,14 +557,14 @@ def _run(args: argparse.Namespace) -> object:
         actual = _mapping(_load_json(str(args.actual)))
         verification = verify_readback(expected, actual)
         if not verification.succeeded:
-            raise DialogueLabError(
+            raise HasbaraTopsError(
                 "read-back verification failed: " + "; ".join(verification.mismatches)
             )
         return verification
     if command == "migration-receipt":
         receipt = migration_receipt_from_mapping(_mapping(_load_json(str(args.json_file))))
         return json.loads(render_migration_receipt(receipt))
-    raise DialogueLabError(f"unknown command: {command}")
+    raise HasbaraTopsError(f"unknown command: {command}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -573,7 +573,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         _print(_run(args))
         return 0
-    except (DialogueLabError, OSError, ValueError, KeyError, sqlite3.Error) as error:
+    except (HasbaraTopsError, OSError, ValueError, KeyError, sqlite3.Error) as error:
         category = (
             "storage_error"
             if isinstance(error, sqlite3.Error)

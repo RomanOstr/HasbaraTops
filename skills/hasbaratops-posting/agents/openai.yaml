@@ -1,0 +1,4 @@
+interface:
+  display_name: "HasbaraTops Posting"
+  short_description: "Record an explicitly confirmed posted reply"
+  default_prompt: "Use $hasbaratops-posting to record my exact published reply."

@@ -15,10 +15,10 @@
     },
     {
       "rules": [
-        "DL-REPLY-01",
+        "HASBARATOPS-REPLY-01",
         "OUT-03"
       ],
-      "decision": "Every proposed public Dialogue Lab reply is one complete, self-contained, ready-to-post response while remaining concise.",
+      "decision": "Every proposed public HasbaraTops reply is one complete, self-contained, ready-to-post response while remaining concise.",
       "reason": "Prevent staged fragments and private planning context from replacing a complete response to the supplied public exchange.",
       "regression": "Preserve concise one-point replies, verified facts, public-context isolation, and the ban on partial or staged output."
     },

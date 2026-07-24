@@ -1,0 +1,4 @@
+interface:
+  display_name: "HasbaraTops Follow-up"
+  short_description: "Process a new turn in an existing case"
+  default_prompt: "Use $hasbaratops-followup to process this new public turn."

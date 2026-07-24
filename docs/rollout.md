@@ -10,7 +10,7 @@ Review repository governance, strategy, and evidence Markdown. Keep `General res
 
 ## Stage 3 - Empty database validation
 
-After explicit approval, initialize a database outside Git, run `dialogue-lab check`, create a verified backup, and record its schema signature and integrity result.
+After explicit approval, initialize a database outside Git, run `HasbaraTops check`, create a verified backup, and record its schema signature and integrity result.
 
 ## Stage 4 - Deterministic import or identity migration
 
@@ -26,6 +26,6 @@ Require zero duplicate identities, URL corruption incidents, graph failures, unv
 
 ## Stage 7 - Cutover
 
-Set `DIALOGUE_LAB_DB` to the verified external database and use only high-level `dialogue-lab` commands for canonical Case and Turn operations. Keep one writer.
+Set `HASBARATOPS_DB` to the verified external database and use only high-level `HasbaraTops` commands for canonical Case and Turn operations. Keep one writer.
 
 Rollback requires explicit authorization and `docs/rollback.md`.

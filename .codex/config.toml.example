@@ -1,7 +1,7 @@
 # Safe local example. The canonical database path is supplied through the
-# DIALOGUE_LAB_DB environment variable and must resolve outside the Git repo.
-[dialogue_lab]
+# HASBARATOPS_DB environment variable and must resolve outside the Git repo.
+[hasbaratops]
 storage_config = "config/storage.toml"
-database_environment_variable = "DIALOGUE_LAB_DB"
+database_environment_variable = "HASBARATOPS_DB"
 writes = "explicit-approval"
 transactional = true

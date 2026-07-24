@@ -1,4 +1,0 @@
-interface:
-  display_name: "Dialogue Lab Intake"
-  short_description: "Start or identify a Dialogue Lab case"
-  default_prompt: "Use $dialogue-lab-intake to analyze this Facebook reply branch."

@@ -3,7 +3,7 @@
 import json
 from collections.abc import Mapping
 
-from .errors import DialogueLabError
+from .errors import HasbaraTopsError
 from .models import MigrationReceipt, to_jsonable
 
 
@@ -12,15 +12,15 @@ def migration_receipt_from_mapping(payload: Mapping[str, object]) -> MigrationRe
     missing = sorted(required - payload.keys())
     extra = sorted(payload.keys() - required)
     if missing or extra:
-        raise DialogueLabError(
+        raise HasbaraTopsError(
             f"migration receipt fields mismatch; missing={missing}, extra={extra}"
         )
     case_id_map = payload["case_id_map"]
     if not isinstance(case_id_map, dict):
-        raise DialogueLabError("migration receipt case_id_map must be a JSON object")
+        raise HasbaraTopsError("migration receipt case_id_map must be a JSON object")
     backup_verified = payload["backup_verified"]
     if not isinstance(backup_verified, bool):
-        raise DialogueLabError("migration receipt backup_verified must be a boolean")
+        raise HasbaraTopsError("migration receipt backup_verified must be a boolean")
     return MigrationReceipt(
         operation=str(payload["operation"]),
         cutover_timestamp=str(payload["cutover_timestamp"]),
@@ -49,7 +49,7 @@ def migration_receipt_from_mapping(payload: Mapping[str, object]) -> MigrationRe
 
 def _list(value: object) -> list[object]:
     if not isinstance(value, list):
-        raise DialogueLabError("migration receipt list field must be a JSON list")
+        raise HasbaraTopsError("migration receipt list field must be a JSON list")
     return value
 
 
